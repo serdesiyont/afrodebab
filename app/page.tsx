@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import { HeroSection } from "@/components/afrodebab/hero-section"
 import { OurServiceSection } from "@/components/afrodebab/ourservice-section"
-import { PortfolioSection } from "@/components/afrodebab/portfolio-section"
+import { PortfolioSection } from "@/components/afrodebab/products-section"
 import { TestimonialsSection } from "@/components/afrodebab/techstack-section"
 import { TeamSection } from "@/components/afrodebab/team-section"
 import { Footer } from "@/components/afrodebab/footer"

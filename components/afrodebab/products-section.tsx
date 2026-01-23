@@ -3,6 +3,7 @@
 import { motion, useInView } from "framer-motion"
 import { useRef } from "react"
 import { ExternalLink, Gift, ShoppingBag, Rocket } from "lucide-react"
+import Image from "next/image"
 
 const brands = [
   {
@@ -13,6 +14,7 @@ const brands = [
     icon: Gift,
     gradient: "from-primary to-primary/70",
     features: ["Diaspora Gifting", "Local Commerce", "Secure Payments"],
+    image: "/our-products/go-gerami.png",
   },
   {
     name: "Coming Soon",
@@ -78,15 +80,27 @@ export function PortfolioSection() {
                 }`}
               >
                 {/* Card Header */}
-                <div className={`h-32 bg-gradient-to-br ${brand.gradient} relative overflow-hidden`}>
+                <div className={`h-48 bg-cover bg-center relative overflow-hidden`}>
                   <div className="absolute inset-0 bg-[url('/noise.png')] opacity-10" />
-                  <div className="absolute bottom-4 left-4">
-                    <div className="w-12 h-12 rounded-xl bg-background/20 backdrop-blur-sm flex items-center justify-center">
-                      <brand.icon className="w-6 h-6 text-background" />
+                  {brand.image ? (
+                    <div className="absolute inset-0 flex items-center justify-center p-6">
+                      <Image
+                        src={brand.image}
+                        alt={brand.name}
+                        fill
+                        className="object-contain"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      />
                     </div>
-                  </div>
+                  ) : (
+                    <div className="absolute bottom-4 left-4">
+                      <div className="w-12 h-12 rounded-xl bg-background/20 backdrop-blur-sm flex items-center justify-center">
+                        <brand.icon className="w-6 h-6 text-background" />
+                      </div>
+                    </div>
+                  )}
                   {brand.status === "live" && (
-                    <div className="absolute top-4 right-4">
+                    <div className="absolute top-4 right-4 z-10">
                       <span className="px-3 py-1 rounded-full bg-background/20 backdrop-blur-sm text-xs font-medium text-background">
                         Live
                       </span>

@@ -3,7 +3,7 @@
 import { motion, useInView } from "framer-motion"
 import { useRef } from "react"
 import Image from "next/image"
-import { Mail, MapPin, Linkedin, Twitter, Instagram } from "lucide-react"
+import { Mail, MapPin, Phone, Linkedin, Twitter, Instagram } from "lucide-react"
 
 export function Footer() {
   const ref = useRef(null)
@@ -25,10 +25,22 @@ export function Footer() {
             <p className="text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
               Whether you're a potential partner, investor, or user, we'd love to hear from you.
             </p>
-            <button className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-primary text-primary-foreground font-medium shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200">
-              <Mail className="w-4 h-4" />
-              Get in Touch
-            </button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <a
+                href="mailto:afrodebab@gmail.com"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full border border-border bg-background/50 text-foreground font-medium hover:bg-muted/50 transition-all duration-200"
+              >
+                <Mail className="w-4 h-4" />
+                afrodebab@gmail.com
+              </a>
+              <a
+                href="mailto:info@afrodebab.com"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full border border-border bg-background/50 text-foreground font-medium hover:bg-muted/50 transition-all duration-200"
+              >
+                <Mail className="w-4 h-4" />
+                info@afrodebab.com
+              </a>
+            </div>
           </motion.div>
         </div>
 
@@ -56,9 +68,21 @@ export function Footer() {
                 Empowering African innovation, connecting local markets with the diaspora, 
                 and building trusted, scalable digital platforms.
               </p>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="w-4 h-4" />
-                <span>Addis Ababa, Ethiopia</span>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <div className="flex items-start gap-2">
+                  <Phone className="w-4 h-4 mt-0.5 shrink-0" />
+                  <a href="tel:+19453993809" className="hover:text-foreground transition-colors">
+                    +1 (945) 399-3809
+                  </a>
+                </div>
+                
+                <div className="flex items-start gap-2">
+                  <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
+                  <div className="flex flex-col gap-1">
+                    <span>Headquartered in Texas, USA</span>
+                    <span>Operations & partnerships in Addis Ababa, Ethiopia</span>
+                  </div>
+                </div>
               </div>
             </div>
 

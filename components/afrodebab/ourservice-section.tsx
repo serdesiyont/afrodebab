@@ -41,49 +41,8 @@ type ServiceCategory = {
 }
 
 const serviceCategories = {
-  "Partnerships & Consulting": {
-    description: "We work as a technology partner, delivery arm, or subcontracting team, depending on client needs.",
-    columns: [
-      {
-        title: "Delivery Partnerships",
-        items: [
-          { name: "Subcontracting Services", icon: Users },
-          { name: "Offshore Teams", icon: Globe },
-          { name: "Nearshore Teams", icon: Network },
-          { name: "Staff Augmentation", icon: Users },
-        ]
-      },
-      {
-        title: "Talent & Team",
-        items: [
-          { name: "Talent Sourcing", icon: Briefcase },
-          { name: "Team Management", icon: Users },
-          { name: "Performance Oversight", icon: Target },
-          { name: "Hybrid Team Models", icon: Network },
-        ]
-      },
-      {
-        title: "Consulting Services",
-        items: [
-          { name: "Digital Strategy", icon: Lightbulb },
-          { name: "Platform Design", icon: Code },
-          { name: "Digital Transformation", icon: Zap },
-          { name: "Technology Roadmaps", icon: FileText },
-        ]
-      },
-      {
-        title: "Government Services",
-        items: [
-          { name: "Public Sector Platforms", icon: Building2 },
-          { name: "Policy Alignment", icon: FileText },
-          { name: "Data-Driven Planning", icon: Database },
-          { name: "Transparency Systems", icon: Shield },
-        ]
-      }
-    ]
-  },
   "Custom Development": {
-    description: "From concept to deployment, we build secure, scalable digital solutions tailored to real-world business and public-sector needs.",
+    description: "We design, build, and deliver production-ready digital platforms for startups, enterprises, and public-sector partners.",
     columns: [
       {
         title: "Custom development projects",
@@ -163,7 +122,48 @@ const serviceCategories = {
         ]
       }
     ]
-  }
+  },
+  "Partnerships & Consulting": {
+    description: "We work as a technology partner, delivery arm, or subcontracting team, depending on client needs.",
+    columns: [
+      {
+        title: "Delivery Partnerships",
+        items: [
+          { name: "Subcontracting Services", icon: Users },
+          { name: "Offshore Teams", icon: Globe },
+          { name: "Nearshore Teams", icon: Network },
+          { name: "Staff Augmentation", icon: Users },
+        ]
+      },
+      {
+        title: "Talent & Team",
+        items: [
+          { name: "Talent Sourcing", icon: Briefcase },
+          { name: "Team Management", icon: Users },
+          { name: "Performance Oversight", icon: Target },
+          { name: "Hybrid Team Models", icon: Network },
+        ]
+      },
+      {
+        title: "Consulting Services",
+        items: [
+          { name: "Digital Strategy", icon: Lightbulb },
+          { name: "Platform Design", icon: Code },
+          { name: "Digital Transformation", icon: Zap },
+          { name: "Technology Roadmaps", icon: FileText },
+        ]
+      },
+      {
+        title: "Government Services",
+        items: [
+          { name: "Public Sector Platforms", icon: Building2 },
+          { name: "Policy Alignment", icon: FileText },
+          { name: "Data-Driven Planning", icon: Database },
+          { name: "Transparency Systems", icon: Shield },
+        ]
+      }
+    ]
+  },
 }
 
 export function OurServiceSection() {
