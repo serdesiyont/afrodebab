@@ -6,30 +6,31 @@ import { Linkedin } from "lucide-react"
 
 const team = [
   {
-    name: "Rekik H Biyadgilign",
-    role: "Team Member",
-    bio: "Key contributor to AfroDebab's mission and vision.",
-    img: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=300&h=300&fit=crop&crop=face",
+    name: "Rekik H. Biyadgilign",
+    role: "Founder & Chief Executive Officer (CEO)",
+    bio: "Rekik is the Founder and CEO of AfroDebab, providing strategic direction and overall leadership for the company. With a strong background in full-stack software development and systems architecture, he leads AfroDebab's vision, partnerships, and platform strategy—driving the company's mission to build innovative, scalable digital solutions across Africa and global markets.",
+    img: "/team/rekik.jpeg",
+    linkedin: "https://www.linkedin.com/in/rekik-biya/",
   },
   {
     name: "Amanuel Lawro",
-    role: "Senior Developer",
-    bio: "Experienced Java and JavaScript Developer with expertise in designing and maintaining web applications and systems.",
-    img: "/amanuel-lawro.jpeg",
+    role: "Co-Founder & Chief Technology Officer (CTO)",
+    bio: "Amanuel serves as Co-Founder and CTO of AfroDebab, overseeing the company's technical architecture, engineering standards, and platform scalability. With deep expertise in modern web technologies and system design, he leads the development of secure, high-performance solutions that power AfroDebab's products and services.",
+    img: "/team/amanuel-lawro.jpeg",
     linkedin: "https://www.linkedin.com/in/amanuel-lawro/",
   },
   {
-    name: "Getachew Bezu",
-    role: "Legal Advisor",
-    bio: "An academic and lawyer interested in international economic law, and law and development.",
-    img: "/getachew-bezu.jpeg",
+    name: "Getachewu Bezu",
+    role: "Co-Founder & Legal Advisor",
+    bio: "Getachewu is Co-Founder and Legal Advisor at AfroDebab, providing guidance on corporate governance, contracts, and regulatory matters. With an academic and professional background in law, including international economic law and development policy, he supports AfroDebab's growth with a strong legal and compliance foundation.",
+    img: "/team/getachew-bezu.jpeg",
     linkedin: "https://www.linkedin.com/in/getachew-bezu-839773137/",
   },
   {
     name: "Abel Abebe",
-    role: "Software Engineer",
-    bio: "Software Engineer with over 4 years of experience specializing in Flutter mobile development and frontend technologies.",
-    img: "/abel-abebe.jpeg",
+    role: "Co-Founder & Head of International Partnerships (goGerami Ethiopia)",
+    bio: "Abel is Co-Founder and Head of International Partnerships for goGerami Ethiopia. He plays a key role in cross-border coordination, local operations, and partnership development. With a strong background in software engineering and mobile technologies, Abel bridges technical understanding with market execution to support AfroDebab's international expansion.",
+    img: "/team/abel-abebe.jpeg",
     linkedin: "https://www.linkedin.com/in/abel-abebe/",
   },
 ]
@@ -60,8 +61,7 @@ export function TeamSection() {
               <span className="text-primary">Inspires</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Meet the visionaries behind AfroDebab, committed to building a better 
-              future for African technology and commerce.
+              Meet the leadership team behind AfroDebab—a group of founders and partners united by a shared vision to build scalable, impactful technology platforms that connect Africa with the global digital economy.
             </p>
           </motion.div>
 

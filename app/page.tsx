@@ -1,8 +1,9 @@
 "use client"
 import { useState, useEffect } from "react"
 import { HeroSection } from "@/components/afrodebab/hero-section"
+import { OurServiceSection } from "@/components/afrodebab/ourservice-section"
 import { PortfolioSection } from "@/components/afrodebab/portfolio-section"
-import { TestimonialsSection } from "@/components/afrodebab/testimonials-section"
+import { TestimonialsSection } from "@/components/afrodebab/techstack-section"
 import { TeamSection } from "@/components/afrodebab/team-section"
 import { Footer } from "@/components/afrodebab/footer"
 import Image from "next/image"
@@ -45,7 +46,8 @@ export default function Home() {
 
   const navLinks = [
     { id: "about", label: "About" },
-    { id: "portfolio", label: "Portfolio" },
+    { id: "services", label: "Our Service" },
+    { id: "products", label: "Products" },
     { id: "team", label: "Team" },
   ]
 
@@ -166,7 +168,11 @@ export default function Home() {
       <main className="relative z-10">
         <HeroSection />
         
-        <div id="portfolio">
+        <div id="services">
+          <OurServiceSection />
+        </div>
+        
+        <div id="products">
           <PortfolioSection />
         </div>
         

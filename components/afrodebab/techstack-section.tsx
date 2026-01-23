@@ -112,10 +112,15 @@ const techStack = [
   },
 ]
 
-const firstColumn = techStack.slice(0, Math.ceil(techStack.length / 3))
-const secondColumn = techStack.slice(Math.ceil(techStack.length / 3), Math.ceil(techStack.length / 3) * 2)
-const thirdColumn = techStack.slice(Math.ceil(techStack.length / 3) * 2)
-const fourthColumn = techStack.slice(0, Math.ceil(techStack.length / 3))
+// Shuffle the tech stack array randomly
+const shuffledTechStack = [...techStack].sort(() => Math.random() - 0.5)
+
+// Split into 4 columns
+const itemsPerColumn = Math.ceil(shuffledTechStack.length / 4)
+const firstColumn = shuffledTechStack.slice(0, itemsPerColumn)
+const secondColumn = shuffledTechStack.slice(itemsPerColumn, itemsPerColumn * 2)
+const thirdColumn = shuffledTechStack.slice(itemsPerColumn * 2, itemsPerColumn * 3)
+const fourthColumn = shuffledTechStack.slice(itemsPerColumn * 3)
 function TechStackCard({
   name,
   icon,
