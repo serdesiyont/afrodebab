@@ -2,32 +2,35 @@
 
 import { motion, useInView } from "framer-motion"
 import { useRef } from "react"
-import { Linkedin, Twitter } from "lucide-react"
+import { Linkedin } from "lucide-react"
 
 const team = [
   {
-    name: "Solomon Tesfaye",
-    role: "Founder & CEO",
-    bio: "Visionary leader with 15+ years in technology and African market development.",
-    img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=face",
+    name: "Rekik H Biyadgilign",
+    role: "Team Member",
+    bio: "Key contributor to AfroDebab's mission and vision.",
+    img: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=300&h=300&fit=crop&crop=face",
   },
   {
-    name: "Adaora Okafor",
-    role: "Chief Technology Officer",
-    bio: "Engineering expert driving innovation in scalable platforms and secure systems.",
-    img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300&h=300&fit=crop&crop=face",
+    name: "Amanuel Lawro",
+    role: "Senior Developer",
+    bio: "Experienced Java and JavaScript Developer with expertise in designing and maintaining web applications and systems.",
+    img: "/amanuel-lawro.jpeg",
+    linkedin: "https://www.linkedin.com/in/amanuel-lawro/",
   },
   {
-    name: "Kweku Mensah",
-    role: "Chief Operations Officer",
-    bio: "Operations specialist ensuring excellence across all business verticals.",
-    img: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=300&fit=crop&crop=face",
+    name: "Getachew Bezu",
+    role: "Legal Advisor",
+    bio: "An academic and lawyer interested in international economic law, and law and development.",
+    img: "/getachew-bezu.jpeg",
+    linkedin: "https://www.linkedin.com/in/getachew-bezu-839773137/",
   },
   {
-    name: "Amina Hassan",
-    role: "Head of Partnerships",
-    bio: "Building strategic alliances to expand AfroDebab's reach and impact.",
-    img: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=300&h=300&fit=crop&crop=face",
+    name: "Abel Abebe",
+    role: "Software Engineer",
+    bio: "Software Engineer with over 4 years of experience specializing in Flutter mobile development and frontend technologies.",
+    img: "/abel-abebe.jpeg",
+    linkedin: "https://www.linkedin.com/in/abel-abebe/",
   },
 ]
 
@@ -88,14 +91,18 @@ export function TeamSection() {
                 <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{member.bio}</p>
 
                 {/* Social Links */}
-                <div className="flex justify-center gap-3">
-                  <button className="p-2 rounded-full bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
-                    <Linkedin className="w-4 h-4" />
-                  </button>
-                  <button className="p-2 rounded-full bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
-                    <Twitter className="w-4 h-4" />
-                  </button>
-                </div>
+                {member.linkedin && (
+                  <div className="flex justify-center">
+                    <a
+                      href={member.linkedin}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-full bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <Linkedin className="w-4 h-4" />
+                    </a>
+                  </div>
+                )}
               </motion.div>
             ))}
           </div>

@@ -46,7 +46,6 @@ export default function Home() {
   const navLinks = [
     { id: "about", label: "About" },
     { id: "portfolio", label: "Portfolio" },
-    { id: "testimonials", label: "Testimonials" },
     { id: "team", label: "Team" },
   ]
 
@@ -171,7 +170,7 @@ export default function Home() {
           <PortfolioSection />
         </div>
         
-        <div id="testimonials">
+        <div>
           <TestimonialsSection />
         </div>
         
