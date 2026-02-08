@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion"
 import Image from "next/image"
+import Link from "next/link"
 import { ArrowRight, Globe, Shield, Zap } from "lucide-react"
 
 export function HeroSection() {
@@ -76,13 +77,19 @@ export function HeroSection() {
             transition={{ duration: 0.6, delay: 0.4 }}
             className="flex flex-col sm:flex-row gap-4 justify-center mb-16"
           >
-            <button className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-primary text-primary-foreground font-medium shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200">
-              Explore Our Ecosystem
+            <a
+              href="#contact"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-primary text-primary-foreground font-medium shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200"
+            >
+              Get In Touch
               <ArrowRight className="w-4 h-4" />
-            </button>
-            <button className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full border border-border bg-background/50 text-foreground font-medium hover:bg-muted/50 transition-all duration-200">
-              Partner With Us
-            </button>
+            </a>
+            <Link
+              href="/about"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full border border-border bg-background/50 text-foreground font-medium hover:bg-muted/50 transition-all duration-200"
+            >
+              About Us
+            </Link>
           </motion.div>
 
           {/* Value Props */}

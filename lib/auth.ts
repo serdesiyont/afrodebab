@@ -1,0 +1,105 @@
+/**
+ * Admin auth: session cookie stores JWT from CMS API.
+ * Login calls https://afrodebab-cms-api.onrender.com/admin/auth/login
+ * and stores the returned token for use in admin/CMS API calls.
+ */
+
+const COOKIE_NAME = "admin_session"
+const SESSION_MAX_AGE_SEC = 60 * 60 * 24 * 7 // 7 days (fallback when JWT has no exp)
+
+function base64UrlDecode(str: string): string {
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(str, "base64url").toString("utf8")
+  }
+  let base64 = str.replace(/-/g, "+").replace(/_/g, "/")
+  while (base64.length % 4) base64 += "="
+  return decodeURIComponent(escape(atob(base64)))
+}
+
+export interface SessionPayload {
+  email: string
+  exp: number
+}
+
+interface JwtPayload {
+  sub?: string
+  exp?: number
+  iat?: number
+}
+
+/**
+ * Decode JWT payload without verifying signature (used for exp check and cookie maxAge).
+ */
+function decodeJwtPayload(token: string): JwtPayload | null {
+  const parts = token.split(".")
+  if (parts.length !== 3) return null
+  try {
+    const json = base64UrlDecode(parts[1]!)
+    return JSON.parse(json) as JwtPayload
+  } catch {
+    return null
+  }
+}
+
+function parseCookies(cookieHeader: string | null): Record<string, string> {
+  if (!cookieHeader) return {}
+  return Object.fromEntries(
+    cookieHeader.split(";").map((c) => {
+      const [key, ...v] = c.trim().split("=")
+      return [key.trim(), v.join("=").trim()]
+    })
+  )
+}
+
+export function getSessionFromCookie(cookieHeader: string | null): SessionPayload | null {
+  const cookies = parseCookies(cookieHeader)
+  const raw = cookies[COOKIE_NAME]
+  if (!raw) return null
+  const payload = decodeJwtPayload(raw)
+  if (!payload || typeof payload.exp !== "number") return null
+  if (payload.exp < Date.now() / 1000) return null
+  return {
+    email: typeof payload.sub === "string" ? payload.sub : "",
+    exp: payload.exp,
+  }
+}
+
+/**
+ * Verify session cookie (JWT from CMS). Returns payload if valid, null otherwise.
+ */
+export async function verifySessionCookie(cookieHeader: string | null): Promise<SessionPayload | null> {
+  return getSessionFromCookie(cookieHeader)
+}
+
+/**
+ * Get the raw admin API token from cookie header (for use when calling CMS API).
+ * Returns null if missing or expired.
+ */
+export function getAdminToken(cookieHeader: string | null): string | null {
+  const cookies = parseCookies(cookieHeader)
+  const token = cookies[COOKIE_NAME]
+  if (!token) return null
+  const payload = decodeJwtPayload(token)
+  if (!payload || typeof payload.exp !== "number" || payload.exp < Date.now() / 1000) return null
+  return token
+}
+
+export function getCookieName(): string {
+  return COOKIE_NAME
+}
+
+export function getSessionMaxAge(): number {
+  return SESSION_MAX_AGE_SEC
+}
+
+/**
+ * Get max age in seconds for cookie from JWT exp, or default SESSION_MAX_AGE_SEC.
+ */
+export function getMaxAgeFromToken(token: string): number {
+  const payload = decodeJwtPayload(token)
+  if (payload && typeof payload.exp === "number") {
+    const sec = payload.exp - Math.floor(Date.now() / 1000)
+    return sec > 0 ? sec : SESSION_MAX_AGE_SEC
+  }
+  return SESSION_MAX_AGE_SEC
+}

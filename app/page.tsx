@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import { HeroSection } from "@/components/afrodebab/hero-section"
 import { OurServiceSection } from "@/components/afrodebab/ourservice-section"
 import { PortfolioSection } from "@/components/afrodebab/products-section"
@@ -44,11 +45,12 @@ export default function Home() {
     }, 100)
   }
 
-  const navLinks = [
-    { id: "about", label: "About" },
+  const navLinks: { id?: string; label: string; href?: string }[] = [
     { id: "services", label: "Our Service" },
     { id: "products", label: "Products" },
     { id: "team", label: "Team" },
+    { label: "Blog", href: "/blog" },
+    { label: "Events", href: "/events" },
   ]
 
   return (
@@ -84,24 +86,34 @@ export default function Home() {
         </a>
 
         <div className="absolute inset-0 hidden flex-1 flex-row items-center justify-center space-x-2 text-sm font-medium text-muted-foreground transition duration-200 hover:text-foreground md:flex md:space-x-2">
-          {navLinks.map((link) => (
-            <button
-              key={link.id}
-              className="relative px-4 py-2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              onClick={() => handleNavClick(link.id)}
-            >
-              <span className="relative z-20">{link.label}</span>
-            </button>
-          ))}
+          {navLinks.map((link) =>
+            link.href ? (
+              <Link
+                key={link.label}
+                href={link.href}
+                className="relative px-4 py-2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                <span className="relative z-20">{link.label}</span>
+              </Link>
+            ) : (
+              <button
+                key={link.id}
+                className="relative px-4 py-2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                onClick={() => link.id && handleNavClick(link.id)}
+              >
+                <span className="relative z-20">{link.label}</span>
+              </button>
+            )
+          )}
         </div>
 
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => handleNavClick("contact")}
+          <Link
+            href="/jobs"
             className="rounded-full font-medium relative cursor-pointer hover:-translate-y-0.5 transition duration-200 inline-block text-center bg-primary text-primary-foreground shadow-lg px-5 py-2 text-sm"
           >
-            Contact Us
-          </button>
+            Jobs
+          </Link>
         </div>
       </header>
 
@@ -142,22 +154,34 @@ export default function Home() {
         <div className="fixed inset-0 z-[9998] bg-background/80 backdrop-blur-sm md:hidden">
           <div className="absolute top-20 left-4 right-4 bg-card/95 backdrop-blur-md border border-border/50 rounded-2xl shadow-2xl p-6">
             <nav className="flex flex-col space-y-2">
-              {navLinks.map((link) => (
-                <button
-                  key={link.id}
-                  onClick={() => handleNavClick(link.id)}
-                  className="text-left px-4 py-3 text-lg font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/50"
-                >
-                  {link.label}
-                </button>
-              ))}
+              {navLinks.map((link) =>
+                link.href ? (
+                  <Link
+                    key={link.label}
+                    href={link.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="text-left px-4 py-3 text-lg font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/50"
+                  >
+                    {link.label}
+                  </Link>
+                ) : (
+                  <button
+                    key={link.id}
+                    onClick={() => handleNavClick(link.id!)}
+                    className="text-left px-4 py-3 text-lg font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/50"
+                  >
+                    {link.label}
+                  </button>
+                )
+              )}
               <div className="border-t border-border/50 pt-4 mt-4">
-                <button
-                  onClick={() => handleNavClick("contact")}
-                  className="w-full px-4 py-3 text-lg font-medium text-center bg-primary text-primary-foreground rounded-lg shadow-lg hover:-translate-y-0.5 transition-all duration-200"
+                <Link
+                  href="/jobs"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="block w-full px-4 py-3 text-lg font-medium text-center bg-primary text-primary-foreground rounded-lg shadow-lg hover:-translate-y-0.5 transition-all duration-200"
                 >
-                  Contact Us
-                </button>
+                  Jobs
+                </Link>
               </div>
             </nav>
           </div>
