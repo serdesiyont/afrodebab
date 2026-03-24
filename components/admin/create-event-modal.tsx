@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import type { EventTypeApi, EventStatusApi } from "@/lib/events-api"
+import { ImageUpload } from "@/components/admin/image-upload"
 
 const EVENT_TYPES: EventTypeApi[] = ["ONLINE", "IN_PERSON"]
 const STATUS_OPTIONS: EventStatusApi[] = ["DRAFT", "PUBLISHED"]
@@ -36,6 +37,7 @@ export function CreateEventModal({
   const [startDateTime, setStartDateTime] = useState("")
   const [endDateTime, setEndDateTime] = useState("")
   const [registrationUrl, setRegistrationUrl] = useState("")
+  const [coverImageUrl, setCoverImageUrl] = useState("")
   const [status, setStatus] = useState<EventStatusApi>("DRAFT")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
@@ -57,6 +59,7 @@ export function CreateEventModal({
           startDate: toISOString(startDateTime),
           endDate: toISOString(endDateTime),
           registrationUrl: registrationUrl.trim(),
+          coverImageUrl: coverImageUrl.trim(),
           status,
         }),
       })
@@ -74,6 +77,7 @@ export function CreateEventModal({
       setStartDateTime("")
       setEndDateTime("")
       setRegistrationUrl("")
+      setCoverImageUrl("")
       setStatus("DRAFT")
       onOpenChange(false)
       onSuccess?.()
@@ -206,6 +210,8 @@ export function CreateEventModal({
                 className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
               />
             </div>
+            <ImageUpload value={coverImageUrl} onChange={setCoverImageUrl} />
+
             <div className="space-y-2">
               <Label htmlFor="event-status" className="text-zinc-200">Status</Label>
               <select

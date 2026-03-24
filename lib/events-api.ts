@@ -13,7 +13,7 @@ export interface EventApi {
   startDate: string
   endDate: string
   registrationUrl: string
-  imageUrl?: string
+  coverImageUrl?: string
   status: EventStatusApi
 }
 

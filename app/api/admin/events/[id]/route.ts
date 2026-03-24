@@ -45,6 +45,7 @@ export async function PUT(
       startDate: typeof body.startDate === "string" ? body.startDate : "",
       endDate: typeof body.endDate === "string" ? body.endDate : "",
       registrationUrl: typeof body.registrationUrl === "string" ? body.registrationUrl : "",
+      coverImageUrl: typeof body.coverImageUrl === "string" ? body.coverImageUrl : "",
       status: normalizeStatus(body.status),
     }
 
