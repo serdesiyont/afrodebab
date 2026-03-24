@@ -30,7 +30,7 @@ const team = [
     name: "Abel Abebe",
     role: "Co-Founder & Head of International Partnerships (goGerami Ethiopia)",
     bio: "Abel is Co-Founder and Head of International Partnerships for goGerami Ethiopia. He plays a key role in cross-border coordination, local operations, and partnership development. With a strong background in software engineering and mobile technologies, Abel bridges technical understanding with market execution to support AfroDebab's international expansion.",
-    img: "/team/abel-abebe.jpeg",
+    img: "/team/abel-abebe.png",
     linkedin: "https://www.linkedin.com/in/abel-abebe/",
   },
 ]
