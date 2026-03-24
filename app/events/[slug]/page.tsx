@@ -39,7 +39,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
   }
 
   const isOnline = event.eventType === "ONLINE"
-  const imageUrl = event.imageUrl || "/placeholder.svg"
+  const imageUrl = event.coverImageUrl || "/placeholder.svg"
   const isExternalImage = imageUrl.startsWith("http")
 
   return (

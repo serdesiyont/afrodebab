@@ -165,7 +165,7 @@ export default function EventsPage() {
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
               {publishedEvents.map((event) => {
-                const imageUrl = event.imageUrl || "/placeholder.svg"
+                const imageUrl = event.coverImageUrl || "/placeholder.svg"
                 const isExternalImage = imageUrl.startsWith("http")
                 const isOnline = event.eventType === "ONLINE"
                 return (
