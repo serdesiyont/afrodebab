@@ -4,8 +4,10 @@
  * and stores the returned token for use in admin/CMS API calls.
  */
 
-const COOKIE_NAME = "admin_session"
+const ADMIN_COOKIE_NAME = "admin_session"
+const EMPLOYEE_COOKIE_NAME = "employee_session"
 const SESSION_MAX_AGE_SEC = 60 * 60 * 24 * 7 // 7 days (fallback when JWT has no exp)
+export type UserRole = "admin" | "employee"
 
 function base64UrlDecode(str: string): string {
   if (typeof Buffer !== "undefined") {
@@ -19,6 +21,7 @@ function base64UrlDecode(str: string): string {
 export interface SessionPayload {
   email: string
   exp: number
+  role: UserRole
 }
 
 interface JwtPayload {
@@ -53,14 +56,21 @@ function parseCookies(cookieHeader: string | null): Record<string, string> {
 
 export function getSessionFromCookie(cookieHeader: string | null): SessionPayload | null {
   const cookies = parseCookies(cookieHeader)
-  const raw = cookies[COOKIE_NAME]
-  if (!raw) return null
-  const payload = decodeJwtPayload(raw)
-  if (!payload || typeof payload.exp !== "number") return null
-  if (payload.exp < Date.now() / 1000) return null
+  const adminPayload = decodeJwtPayload(cookies[ADMIN_COOKIE_NAME] ?? "")
+  if (adminPayload && typeof adminPayload.exp === "number" && adminPayload.exp >= Date.now() / 1000) {
+    return {
+      email: typeof adminPayload.sub === "string" ? adminPayload.sub : "",
+      exp: adminPayload.exp,
+      role: "admin",
+    }
+  }
+  const employeePayload = decodeJwtPayload(cookies[EMPLOYEE_COOKIE_NAME] ?? "")
+  if (!employeePayload || typeof employeePayload.exp !== "number") return null
+  if (employeePayload.exp < Date.now() / 1000) return null
   return {
-    email: typeof payload.sub === "string" ? payload.sub : "",
-    exp: payload.exp,
+    email: typeof employeePayload.sub === "string" ? employeePayload.sub : "",
+    exp: employeePayload.exp,
+    role: "employee",
   }
 }
 
@@ -77,15 +87,24 @@ export async function verifySessionCookie(cookieHeader: string | null): Promise<
  */
 export function getAdminToken(cookieHeader: string | null): string | null {
   const cookies = parseCookies(cookieHeader)
-  const token = cookies[COOKIE_NAME]
+  const token = cookies[ADMIN_COOKIE_NAME]
   if (!token) return null
   const payload = decodeJwtPayload(token)
   if (!payload || typeof payload.exp !== "number" || payload.exp < Date.now() / 1000) return null
   return token
 }
 
-export function getCookieName(): string {
-  return COOKIE_NAME
+export function getEmployeeToken(cookieHeader: string | null): string | null {
+  const cookies = parseCookies(cookieHeader)
+  const token = cookies[EMPLOYEE_COOKIE_NAME]
+  if (!token) return null
+  const payload = decodeJwtPayload(token)
+  if (!payload || typeof payload.exp !== "number" || payload.exp < Date.now() / 1000) return null
+  return token
+}
+
+export function getCookieName(role: UserRole = "admin"): string {
+  return role === "admin" ? ADMIN_COOKIE_NAME : EMPLOYEE_COOKIE_NAME
 }
 
 export function getSessionMaxAge(): number {
