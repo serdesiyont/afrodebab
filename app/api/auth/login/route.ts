@@ -4,7 +4,7 @@ import {
   getMaxAgeFromToken,
 } from "@/lib/auth"
 
-const CMS_LOGIN_URL = "https://afrodebab-cms-api.onrender.com/admin/auth/login"
+const CMS_LOGIN_URL = `${process.env.NEXT_PUBLIC_CMS_BASE_URL}/admin/auth/login`
 
 export async function POST(request: NextRequest) {
   try {
