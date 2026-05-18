@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getAdminToken } from "@/lib/auth"
 import { buildMultipartBody } from "@/lib/multipart"
 import { postRaw } from "@/lib/raw-http"
+import { DAY_OF_WEEK_VALUES, type DayOfWeekApi } from "@/lib/employees-api"
 
 const CMS_BASE_URL = process.env.NEXT_PUBLIC_CMS_BASE_URL!
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"]
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const formData = await request.formData()
-    const files = formData.getAll("file")
+    const files = [...formData.getAll("file"), ...formData.getAll("photo")]
     if (files.length > 1) {
       return NextResponse.json({ error: "Only one photo can be uploaded" }, { status: 400 })
     }
@@ -79,6 +80,15 @@ export async function POST(request: NextRequest) {
     const phone = formData.get("phone")
     const position = formData.get("position")
     const linkedinUrl = formData.get("linkedinUrl")
+    const photoUrl = formData.get("photoUrl")
+    const salaryDate = formData.get("salaryDate")
+    const salaryAmountMinor = formData.get("salaryAmountMinor")
+    const rawScheduleDays = formData
+      .getAll("salaryScheduleDays")
+      .filter((value): value is string => typeof value === "string")
+      .flatMap((value) => value.split(","))
+      .map((value) => value.trim())
+      .filter(Boolean)
 
     const fields: Record<string, string> = {}
     if (typeof name === "string") fields.name = name.trim()
@@ -87,6 +97,26 @@ export async function POST(request: NextRequest) {
     if (typeof position === "string") fields.position = position.trim()
     if (typeof linkedinUrl === "string" && linkedinUrl.trim()) {
       fields.linkedinUrl = linkedinUrl.trim()
+    }
+    if (typeof photoUrl === "string" && photoUrl.trim()) {
+      fields.photoUrl = photoUrl.trim()
+    }
+    if (typeof salaryDate === "string" && salaryDate.trim()) {
+      fields.salaryDate = salaryDate.trim()
+    }
+    if (typeof salaryAmountMinor === "string" && salaryAmountMinor.trim()) {
+      const salaryAmount = Number(salaryAmountMinor)
+      if (!Number.isFinite(salaryAmount) || salaryAmount < 0) {
+        return NextResponse.json({ error: "Salary amount must be zero or greater" }, { status: 400 })
+      }
+      fields.salaryAmountMinor = String(Math.trunc(salaryAmount))
+    }
+    const allowedDays = new Set<DayOfWeekApi>(DAY_OF_WEEK_VALUES)
+    const validScheduleDays = rawScheduleDays.filter((day): day is DayOfWeekApi =>
+      allowedDays.has(day as DayOfWeekApi)
+    )
+    if (validScheduleDays.length > 0) {
+      fields.salaryScheduleDays = validScheduleDays.join(",")
     }
 
     const { body, contentType } = await buildMultipartBody({

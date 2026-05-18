@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getAdminToken } from "@/lib/auth"
+import { DAY_OF_WEEK_VALUES, type DayOfWeekApi } from "@/lib/employees-api"
 
 const CMS_BASE_URL = process.env.NEXT_PUBLIC_CMS_BASE_URL!
 
@@ -54,13 +55,41 @@ export async function PUT(
 
   try {
     const body = await request.json()
+    const scheduleDays = Array.isArray(body.salaryScheduleDays)
+      ? body.salaryScheduleDays.filter(
+          (day: unknown): day is DayOfWeekApi =>
+            typeof day === "string" && DAY_OF_WEEK_VALUES.includes(day as DayOfWeekApi)
+        )
+      : undefined
+
+    const salaryAmount =
+      typeof body.salaryAmountMinor === "number" && Number.isFinite(body.salaryAmountMinor)
+        ? Math.trunc(body.salaryAmountMinor)
+        : body.salaryAmountMinor === null
+          ? null
+          : undefined
+    if (typeof salaryAmount === "number" && salaryAmount < 0) {
+      return NextResponse.json({ error: "Salary amount must be zero or greater" }, { status: 400 })
+    }
+
     const payload = {
-      name: typeof body.name === "string" ? body.name.trim() : "",
-      email: typeof body.email === "string" ? body.email.trim() : "",
-      phone: typeof body.phone === "string" ? body.phone.trim() : "",
-      position: typeof body.position === "string" ? body.position.trim() : "",
-      linkedinUrl: typeof body.linkedinUrl === "string" ? body.linkedinUrl.trim() : "",
-      active: typeof body.active === "boolean" ? body.active : true,
+      name: typeof body.name === "string" ? body.name.trim() : body.name === null ? null : undefined,
+      email: typeof body.email === "string" ? body.email.trim() : body.email === null ? null : undefined,
+      phone: typeof body.phone === "string" ? body.phone.trim() : body.phone === null ? null : undefined,
+      position:
+        typeof body.position === "string" ? body.position.trim() : body.position === null ? null : undefined,
+      linkedinUrl:
+        typeof body.linkedinUrl === "string"
+          ? body.linkedinUrl.trim()
+          : body.linkedinUrl === null
+            ? null
+            : undefined,
+      photo: typeof body.photo === "string" ? body.photo.trim() : body.photo === null ? null : undefined,
+      active: typeof body.active === "boolean" ? body.active : body.active === null ? null : undefined,
+      salaryDate:
+        typeof body.salaryDate === "string" ? body.salaryDate.trim() : body.salaryDate === null ? null : undefined,
+      salaryAmountMinor: salaryAmount,
+      salaryScheduleDays: scheduleDays ?? (body.salaryScheduleDays === null ? null : undefined),
     }
 
     const res = await fetch(`${CMS_BASE_URL}/admin/employees/${encodeURIComponent(id)}`, {

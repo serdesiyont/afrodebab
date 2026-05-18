@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import type { EmployeeApi } from "@/lib/employees-api"
 import { EmployeePhotoUpload } from "@/components/admin/employee-photo-upload"
+import { DAY_OF_WEEK_VALUES, type DayOfWeekApi } from "@/lib/employees-api"
 
 interface EditEmployeeModalProps {
   open: boolean
@@ -27,6 +28,9 @@ export function EditEmployeeModal({
   const [phone, setPhone] = useState("")
   const [position, setPosition] = useState("")
   const [linkedinUrl, setLinkedinUrl] = useState("")
+  const [salaryDate, setSalaryDate] = useState("")
+  const [salaryAmountMajor, setSalaryAmountMajor] = useState("")
+  const [salaryScheduleDays, setSalaryScheduleDays] = useState<DayOfWeekApi[]>([])
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [active, setActive] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -39,10 +43,21 @@ export function EditEmployeeModal({
     setPhone(employee.phone ?? "")
     setPosition(employee.position ?? "")
     setLinkedinUrl(employee.linkedinUrl ?? "")
+    setSalaryDate(employee.salaryDate ?? "")
+    setSalaryAmountMajor(
+      typeof employee.salaryAmountMinor === "number" ? String(employee.salaryAmountMinor / 100) : ""
+    )
+    setSalaryScheduleDays(employee.salaryScheduleDays ?? [])
     setPhotoFile(null)
     setActive(employee.active ?? true)
     setError("")
   }, [employee, open])
+
+  const toggleScheduleDay = (day: DayOfWeekApi) => {
+    setSalaryScheduleDays((prev) =>
+      prev.includes(day) ? prev.filter((item) => item !== day) : [...prev, day]
+    )
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -50,6 +65,17 @@ export function EditEmployeeModal({
     setError("")
     setSubmitting(true)
     try {
+      const salaryAmountMinor =
+        salaryAmountMajor.trim() === ""
+          ? null
+          : (() => {
+              const parsedMajor = Number(salaryAmountMajor.trim())
+              if (!Number.isFinite(parsedMajor) || parsedMajor < 0) {
+                throw new Error("Salary amount must be a valid non-negative number")
+              }
+              return Math.round(parsedMajor * 100)
+            })()
+
       const res = await fetch(`/api/admin/employees/${employee.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -58,7 +84,10 @@ export function EditEmployeeModal({
           email: email.trim(),
           phone: phone.trim(),
           position: position.trim(),
-          linkedinUrl: linkedinUrl.trim(),
+          linkedinUrl: linkedinUrl.trim() || null,
+          salaryDate: salaryDate || null,
+          salaryAmountMinor,
+          salaryScheduleDays,
           active,
         }),
       })
@@ -86,8 +115,8 @@ export function EditEmployeeModal({
 
       onOpenChange(false)
       onSuccess?.()
-    } catch {
-      setError("Something went wrong")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong")
     }
     setSubmitting(false)
   }
@@ -179,6 +208,50 @@ export function EditEmployeeModal({
                 onChange={(e) => setLinkedinUrl(e.target.value)}
                 className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
               />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="edit-employee-salary-date" className="text-zinc-200">
+                  Salary date
+                </Label>
+                <Input
+                  id="edit-employee-salary-date"
+                  type="date"
+                  value={salaryDate}
+                  onChange={(e) => setSalaryDate(e.target.value)}
+                  className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-employee-salary-amount" className="text-zinc-200">
+                  Salary amount
+                </Label>
+                <Input
+                  id="edit-employee-salary-amount"
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={salaryAmountMajor}
+                  onChange={(e) => setSalaryAmountMajor(e.target.value)}
+                  className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-zinc-200">Office schedule days</Label>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {DAY_OF_WEEK_VALUES.map((day) => (
+                  <label key={day} className="flex items-center gap-2 rounded-md border border-zinc-700 px-2 py-1.5 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={salaryScheduleDays.includes(day)}
+                      onChange={() => toggleScheduleDay(day)}
+                      className="rounded border-zinc-700 bg-zinc-800 text-[#e78a53] focus:ring-[#e78a53]/20"
+                    />
+                    <span className="text-zinc-300">{day.slice(0, 3)}</span>
+                  </label>
+                ))}
+              </div>
             </div>
             <EmployeePhotoUpload
               file={photoFile}

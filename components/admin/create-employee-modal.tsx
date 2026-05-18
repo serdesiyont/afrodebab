@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { EmployeePhotoUpload } from "@/components/admin/employee-photo-upload"
+import { DAY_OF_WEEK_VALUES, type DayOfWeekApi } from "@/lib/employees-api"
 
 interface CreateEmployeeModalProps {
   open: boolean
@@ -24,9 +25,18 @@ export function CreateEmployeeModal({
   const [phone, setPhone] = useState("")
   const [position, setPosition] = useState("")
   const [linkedinUrl, setLinkedinUrl] = useState("")
+  const [salaryDate, setSalaryDate] = useState("")
+  const [salaryAmountMajor, setSalaryAmountMajor] = useState("")
+  const [salaryScheduleDays, setSalaryScheduleDays] = useState<DayOfWeekApi[]>([])
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
+
+  const toggleScheduleDay = (day: DayOfWeekApi) => {
+    setSalaryScheduleDays((prev) =>
+      prev.includes(day) ? prev.filter((item) => item !== day) : [...prev, day]
+    )
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -39,6 +49,19 @@ export function CreateEmployeeModal({
       formData.append("phone", phone.trim())
       formData.append("position", position.trim())
       if (linkedinUrl.trim()) formData.append("linkedinUrl", linkedinUrl.trim())
+      if (salaryDate) formData.append("salaryDate", salaryDate)
+      if (salaryAmountMajor.trim()) {
+        const parsedMajor = Number(salaryAmountMajor.trim())
+        if (!Number.isFinite(parsedMajor) || parsedMajor < 0) {
+          setError("Salary amount must be a valid non-negative number")
+          setSubmitting(false)
+          return
+        }
+        formData.append("salaryAmountMinor", String(Math.round(parsedMajor * 100)))
+      }
+      for (const day of salaryScheduleDays) {
+        formData.append("salaryScheduleDays", day)
+      }
       if (photoFile) formData.append("file", photoFile)
 
       const res = await fetch(`/api/admin/employees`, {
@@ -56,6 +79,9 @@ export function CreateEmployeeModal({
       setPhone("")
       setPosition("")
       setLinkedinUrl("")
+      setSalaryDate("")
+      setSalaryAmountMajor("")
+      setSalaryScheduleDays([])
       setPhotoFile(null)
       onOpenChange(false)
       onSuccess?.()
@@ -152,6 +178,50 @@ export function CreateEmployeeModal({
                 onChange={(e) => setLinkedinUrl(e.target.value)}
                 className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
               />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="employee-salary-date" className="text-zinc-200">
+                  Salary date
+                </Label>
+                <Input
+                  id="employee-salary-date"
+                  type="date"
+                  value={salaryDate}
+                  onChange={(e) => setSalaryDate(e.target.value)}
+                  className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="employee-salary-amount" className="text-zinc-200">
+                  Salary amount
+                </Label>
+                <Input
+                  id="employee-salary-amount"
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={salaryAmountMajor}
+                  onChange={(e) => setSalaryAmountMajor(e.target.value)}
+                  className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-zinc-200">Office schedule days</Label>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {DAY_OF_WEEK_VALUES.map((day) => (
+                  <label key={day} className="flex items-center gap-2 rounded-md border border-zinc-700 px-2 py-1.5 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={salaryScheduleDays.includes(day)}
+                      onChange={() => toggleScheduleDay(day)}
+                      className="rounded border-zinc-700 bg-zinc-800 text-[#e78a53] focus:ring-[#e78a53]/20"
+                    />
+                    <span className="text-zinc-300">{day.slice(0, 3)}</span>
+                  </label>
+                ))}
+              </div>
             </div>
             <EmployeePhotoUpload file={photoFile} onChange={setPhotoFile} />
 

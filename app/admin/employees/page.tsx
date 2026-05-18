@@ -52,6 +52,15 @@ export default function AdminEmployeesPage() {
     setEditEmployee(null)
   }
 
+  const formatSalaryAmount = (amountMinor: number | null | undefined) => {
+    if (typeof amountMinor !== "number") return "-"
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+    }).format(amountMinor / 100)
+  }
+
   const handleDelete = async (employee: EmployeeApi) => {
     if (!confirm(`Delete "${employee.name}"?`)) return
     setDeletingId(employee.id)
@@ -66,6 +75,7 @@ export default function AdminEmployeesPage() {
         const data = await res.json().catch(() => ({}))
         setError((data as { error?: string }).error ?? "Failed to delete employee")
       }
+
     } catch {
       setError("Failed to delete employee")
     } finally {
@@ -105,6 +115,7 @@ export default function AdminEmployeesPage() {
                   <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Name</th>
                   <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Email</th>
                   <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Position</th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Salary</th>
                   <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Status</th>
                   <th className="w-24 px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Actions</th>
                 </tr>
@@ -117,6 +128,17 @@ export default function AdminEmployeesPage() {
                     </td>
                     <td className="px-4 py-3 text-zinc-400">{employee.email}</td>
                     <td className="px-4 py-3 text-zinc-400">{employee.position}</td>
+                    <td className="px-4 py-3 text-zinc-400">
+                      <div className="text-sm text-zinc-300">{formatSalaryAmount(employee.salaryAmountMinor)}</div>
+                      {employee.salaryDate && (
+                        <div className="text-xs text-zinc-500">Date: {employee.salaryDate}</div>
+                      )}
+                      {employee.salaryScheduleDays && employee.salaryScheduleDays.length > 0 && (
+                        <div className="text-xs text-zinc-500">
+                          {employee.salaryScheduleDays.map((day) => day.slice(0, 3)).join(", ")}
+                        </div>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${

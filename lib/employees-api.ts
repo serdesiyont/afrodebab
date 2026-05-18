@@ -1,5 +1,18 @@
 const CMS_BASE_URL = process.env.NEXT_PUBLIC_CMS_BASE_URL!
 
+export const DAY_OF_WEEK_VALUES = [
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+  "SUNDAY",
+] as const
+
+export type DayOfWeekApi = (typeof DAY_OF_WEEK_VALUES)[number]
+export type PaymentStatusApi = "PENDING" | "PAID"
+
 export interface EmployeeApi {
   id: number
   name: string
@@ -9,6 +22,9 @@ export interface EmployeeApi {
   linkedinUrl?: string | null
   photo?: string | null
   active: boolean
+  salaryDate?: string | null
+  salaryAmountMinor?: number | null
+  salaryScheduleDays?: DayOfWeekApi[]
   createdAt: string
   updatedAt: string
 }
@@ -23,6 +39,34 @@ export interface EmployeeListResponse {
 
 export type EmployeeSortBy = "createdAt" | "name" | "email" | "position" | string
 export type EmployeeSortDirection = "asc" | "desc"
+
+export interface EmployeeAttendanceApi {
+  id: number
+  employeeId: number
+  date: string
+  clockInAt: string
+  clockOutAt: string | null
+  lunchBreakInAt: string | null
+  lunchBreakOutAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface EmployeePaymentApi {
+  id: number
+  employeeId: number
+  employeeName: string
+  cycleStartDate: string
+  dueDate: string
+  amountMinor: number
+  paidAmountMinor: number | null
+  status: PaymentStatusApi
+  transactionReference: string | null
+  paidAt: string | null
+  lastReminderSentAt: string | null
+  createdAt: string
+  updatedAt: string
+}
 
 export async function fetchEmployees(
   page: number = 0,

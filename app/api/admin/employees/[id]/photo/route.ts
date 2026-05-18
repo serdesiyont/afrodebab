@@ -23,7 +23,7 @@ export async function POST(
 
   try {
     const formData = await request.formData()
-    const files = formData.getAll("file")
+    const files = [...formData.getAll("file"), ...formData.getAll("photo")]
     if (files.length !== 1 || !(files[0] instanceof File)) {
       return NextResponse.json({ error: "A single photo file is required" }, { status: 400 })
     }

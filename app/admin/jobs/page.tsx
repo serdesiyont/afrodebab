@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { Loader2, Plus, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { fetchJobs, formatJobEmploymentType, type JobApi } from "@/lib/jobs-api"
+import { formatJobEmploymentType, type JobApi } from "@/lib/jobs-api"
 import { CreateJobModal } from "@/components/admin/create-job-modal"
 import { EditJobModal } from "@/components/admin/edit-job-modal"
 
@@ -74,9 +74,7 @@ export default function AdminJobsPage() {
         </div>
       </div>
 
-      {error && (
-        <p className="mb-4 text-sm text-red-400">{error}</p>
-      )}
+      {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
 
       {loading ? (
         <div className="flex justify-center py-16">
@@ -88,33 +86,63 @@ export default function AdminJobsPage() {
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-zinc-800 bg-zinc-900">
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Title</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Department</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Type</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Status</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500 w-24">Actions</th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                    Title
+                  </th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                    Department
+                  </th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                    Type
+                  </th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                    View
+                  </th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500 w-24">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {jobs.map((job) => (
-                  <tr key={job.id} className="border-b border-zinc-800/80 hover:bg-zinc-800/30 transition-colors">
+                  <tr
+                    key={job.id}
+                    className="border-b border-zinc-800/80 hover:bg-zinc-800/30 transition-colors"
+                  >
                     <td className="px-4 py-3">
-                      <span className="font-medium text-white">{job.title}</span>
+                      <span className="font-medium text-white">
+                        {job.title}
+                      </span>
                     </td>
-                    <td className="px-4 py-3 text-zinc-400">{job.department}</td>
-                    <td className="px-4 py-3 text-zinc-400">{formatJobEmploymentType(job.employmentType)}</td>
+                    <td className="px-4 py-3 text-zinc-400">
+                      {job.department}
+                    </td>
+                    <td className="px-4 py-3 text-zinc-400">
+                      {formatJobEmploymentType(job.employmentType)}
+                    </td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
                           job.status === "OPEN"
                             ? "bg-emerald-500/20 text-emerald-400"
                             : job.status === "CLOSED"
-                              ? "bg-zinc-600/30 text-zinc-400"
-                              : "bg-amber-500/20 text-amber-400"
+                            ? "bg-zinc-600/30 text-zinc-400"
+                            : "bg-amber-500/20 text-amber-400"
                         }`}
                       >
                         {job.status}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-zinc-400">
+                      <Link
+                        href={`/admin/jobs/${job.id}/applicants`}
+                        className="text-sm text-zinc-300 hover:text-white hover:underline"
+                      >
+                        Applicants
+                      </Link>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -158,11 +186,11 @@ export default function AdminJobsPage() {
         open={editModalOpen}
         onOpenChange={(open) => !open && closeEditModal()}
         onSuccess={() => {
-          closeEditModal()
-          fetchJobsList()
+          closeEditModal();
+          fetchJobsList();
         }}
         job={editJob}
       />
     </div>
-  )
+  );
 }

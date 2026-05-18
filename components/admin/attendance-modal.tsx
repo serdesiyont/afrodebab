@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { format } from "date-fns"
 import { Loader2, Calendar, Clock, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -12,8 +12,10 @@ interface AttendanceRecord {
   id: number
   employeeId: number
   date: string
-  clockInAt: string | null
+  clockInAt: string
   clockOutAt: string | null
+  lunchBreakInAt: string | null
+  lunchBreakOutAt: string | null
   createdAt: string
   updatedAt: string
 }
@@ -34,6 +36,8 @@ export function AttendanceModal({ open, onOpenChange, employee }: AttendanceModa
     date: format(new Date(), "yyyy-MM-dd"),
     clockInAt: "",
     clockOutAt: "",
+    lunchBreakInAt: "",
+    lunchBreakOutAt: "",
   })
 
   const fetchAttendance = async () => {
@@ -47,7 +51,10 @@ export function AttendanceModal({ open, onOpenChange, employee }: AttendanceModa
         throw new Error((data as { error?: string }).error ?? "Failed to load attendance")
       }
       const data = await res.json()
-      setAttendance(Array.isArray(data) ? data : [])
+      const sortedData = Array.isArray(data) 
+        ? [...data].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        : []
+      setAttendance(sortedData)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load attendance")
     } finally {
@@ -55,17 +62,22 @@ export function AttendanceModal({ open, onOpenChange, employee }: AttendanceModa
     }
   }
 
-  const handleOpen = (isOpen: boolean) => {
-    onOpenChange(isOpen)
-    if (isOpen && employee) {
+  useEffect(() => {
+    if (open && employee) {
       fetchAttendance()
       setShowForm(false)
       setFormData({
         date: format(new Date(), "yyyy-MM-dd"),
         clockInAt: "",
         clockOutAt: "",
+        lunchBreakInAt: "",
+        lunchBreakOutAt: "",
       })
     }
+  }, [open, employee])
+
+  const handleOpen = (isOpen: boolean) => {
+    onOpenChange(isOpen)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,8 +89,14 @@ export function AttendanceModal({ open, onOpenChange, employee }: AttendanceModa
     try {
       const payload = {
         date: formData.date,
-        clockInAt: formData.clockInAt ? new Date(formData.clockInAt).toISOString() : null,
-        clockOutAt: formData.clockOutAt ? new Date(formData.clockOutAt).toISOString() : null,
+        clockInAt: new Date(`${formData.date}T${formData.clockInAt}`).toISOString(),
+        clockOutAt: new Date(`${formData.date}T${formData.clockOutAt}`).toISOString(),
+        lunchBreakInAt: formData.lunchBreakInAt
+          ? new Date(`${formData.date}T${formData.lunchBreakInAt}`).toISOString()
+          : null,
+        lunchBreakOutAt: formData.lunchBreakOutAt
+          ? new Date(`${formData.date}T${formData.lunchBreakOutAt}`).toISOString()
+          : null,
       }
 
       const res = await fetch(`/api/admin/employees/${employee.id}/attendance`, {
@@ -97,6 +115,8 @@ export function AttendanceModal({ open, onOpenChange, employee }: AttendanceModa
         date: format(new Date(), "yyyy-MM-dd"),
         clockInAt: "",
         clockOutAt: "",
+        lunchBreakInAt: "",
+        lunchBreakOutAt: "",
       })
       fetchAttendance()
     } catch (err) {
@@ -155,7 +175,7 @@ export function AttendanceModal({ open, onOpenChange, employee }: AttendanceModa
                 </p>
               )}
 
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="date" className="text-zinc-200">Date</Label>
                   <Input
@@ -174,6 +194,7 @@ export function AttendanceModal({ open, onOpenChange, employee }: AttendanceModa
                     type="time"
                     value={formData.clockInAt}
                     onChange={(e) => setFormData({ ...formData, clockInAt: e.target.value })}
+                    required
                     className="bg-zinc-800 border-zinc-700 text-white"
                   />
                 </div>
@@ -184,6 +205,27 @@ export function AttendanceModal({ open, onOpenChange, employee }: AttendanceModa
                     type="time"
                     value={formData.clockOutAt}
                     onChange={(e) => setFormData({ ...formData, clockOutAt: e.target.value })}
+                    required
+                    className="bg-zinc-800 border-zinc-700 text-white"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lunchIn" className="text-zinc-200">Lunch Break In</Label>
+                  <Input
+                    id="lunchIn"
+                    type="time"
+                    value={formData.lunchBreakInAt}
+                    onChange={(e) => setFormData({ ...formData, lunchBreakInAt: e.target.value })}
+                    className="bg-zinc-800 border-zinc-700 text-white"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lunchOut" className="text-zinc-200">Lunch Break Out</Label>
+                  <Input
+                    id="lunchOut"
+                    type="time"
+                    value={formData.lunchBreakOutAt}
+                    onChange={(e) => setFormData({ ...formData, lunchBreakOutAt: e.target.value })}
                     className="bg-zinc-800 border-zinc-700 text-white"
                   />
                 </div>
@@ -237,6 +279,10 @@ export function AttendanceModal({ open, onOpenChange, employee }: AttendanceModa
                     <div className="flex items-center gap-1 text-zinc-400">
                       <Clock className="size-3" />
                       <span>Out: {formatTime(record.clockOutAt)}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-zinc-400">
+                      <Clock className="size-3" />
+                      <span>Lunch: {formatTime(record.lunchBreakInAt)} - {formatTime(record.lunchBreakOutAt)}</span>
                     </div>
                   </div>
                 </div>

@@ -2,12 +2,13 @@
 
 import type React from "react"
 import { useState, useEffect, useCallback } from "react"
-import { Loader2, User, Lock, Clock, LogOut, Key } from "lucide-react"
+import { Loader2, User, Clock, LogOut, Key } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { clearAdminClientToken } from "@/lib/admin-client-auth"
 import { QRScanner } from "@/components/employee/qr-scanner"
+import type { EmployeePaymentApi } from "@/lib/employees-api"
 
 interface EmployeeInfo {
   id: number
@@ -16,11 +17,15 @@ interface EmployeeInfo {
   phone: string
   position: string
   photo?: string | null
+  salaryDate?: string | null
+  salaryAmountMinor?: number | null
+  salaryScheduleDays?: string[]
 }
 
 const QR_VALID_URL = "https://attendance.gogerami.com"
 
 export default function EmployeePage() {
+  const [activeTab, setActiveTab] = useState<"attendance" | "payments">("attendance")
   const [employee, setEmployee] = useState<EmployeeInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentPassword, setCurrentPassword] = useState("")
@@ -30,9 +35,16 @@ export default function EmployeePage() {
   const [success, setSuccess] = useState("")
   const [showScanner, setShowScanner] = useState(false)
   const [showPasswordForm, setShowPasswordForm] = useState(false)
-  const [clockAction, setClockAction] = useState<"clockIn" | "clockOut" | null>(null)
+  const [clockAction, setClockAction] = useState<
+    "clockIn" | "clockOut" | "lunchBreakIn" | "lunchBreakOut" | null
+  >(null)
   const [clockLoading, setClockLoading] = useState(false)
   const [clockMessage, setClockMessage] = useState("")
+  const [payments, setPayments] = useState<EmployeePaymentApi[]>([])
+  const [paidPayments, setPaidPayments] = useState<EmployeePaymentApi[]>([])
+  const [paymentsLoading, setPaymentsLoading] = useState(false)
+  const [paymentsError, setPaymentsError] = useState("")
+  const [paymentTab, setPaymentTab] = useState<"all" | "paid">("all")
 
   const fetchEmployee = useCallback(async () => {
     try {
@@ -50,9 +62,41 @@ export default function EmployeePage() {
     }
   }, [])
 
+  const fetchPayments = useCallback(async () => {
+    setPaymentsLoading(true)
+    setPaymentsError("")
+    try {
+      const [allRes, paidRes] = await Promise.all([
+        fetch("/api/employee/me/payments"),
+        fetch("/api/employee/me/payments/paid"),
+      ])
+
+      const allData = await allRes.json().catch(() => [])
+      const paidData = await paidRes.json().catch(() => [])
+
+      if (!allRes.ok) {
+        throw new Error((allData as { error?: string }).error ?? "Failed to fetch payments")
+      }
+      if (!paidRes.ok) {
+        throw new Error((paidData as { error?: string }).error ?? "Failed to fetch paid payments")
+      }
+
+      setPayments(Array.isArray(allData) ? allData : [])
+      setPaidPayments(Array.isArray(paidData) ? paidData : [])
+    } catch (err) {
+      setPaymentsError(err instanceof Error ? err.message : "Failed to fetch payments")
+    } finally {
+      setPaymentsLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     fetchEmployee()
   }, [fetchEmployee])
+
+  useEffect(() => {
+    fetchPayments()
+  }, [fetchPayments])
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -90,7 +134,7 @@ export default function EmployeePage() {
     window.location.href = "/login"
   }
 
-  const handleClockAction = (action: "clockIn" | "clockOut") => {
+  const handleClockAction = (action: "clockIn" | "clockOut" | "lunchBreakIn" | "lunchBreakOut") => {
     setClockAction(action)
     setShowScanner(true)
     setClockMessage("")
@@ -122,7 +166,15 @@ export default function EmployeePage() {
       if (!res.ok) {
         setClockMessage((data as { error?: string }).error ?? "Failed to record attendance")
       } else {
-        setClockMessage(clockAction === "clockIn" ? "Clock in recorded successfully!" : "Clock out recorded successfully!")
+        const actionMessage =
+          clockAction === "clockIn"
+            ? "Clock in recorded successfully!"
+            : clockAction === "clockOut"
+              ? "Clock out recorded successfully!"
+              : clockAction === "lunchBreakIn"
+                ? "Lunch break start recorded successfully!"
+                : "Lunch break end recorded successfully!"
+        setClockMessage(actionMessage)
       }
     } catch {
       setClockMessage("Failed to record attendance. Please try again.")
@@ -131,6 +183,16 @@ export default function EmployeePage() {
     setClockLoading(false)
     setClockAction(null)
   }
+
+  const paymentRows = paymentTab === "all" ? payments : paidPayments
+  const formatMoney = (amountMinor: number | null) =>
+    amountMinor === null
+      ? "-"
+      : new Intl.NumberFormat(undefined, {
+          style: "currency",
+          currency: "USD",
+          minimumFractionDigits: 2,
+        }).format(amountMinor / 100)
 
   if (loading) {
     return (
@@ -142,11 +204,13 @@ export default function EmployeePage() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <main className="mx-auto max-w-3xl p-6 md:p-10">
+      <main className="mx-auto max-w-5xl p-6 md:p-10">
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-white">Employee Portal</h1>
-            <p className="mt-1 text-zinc-400">Manage your account and attendance.</p>
+            <p className="mt-1 text-zinc-400">
+              Manage your account, attendance, and payments.
+            </p>
           </div>
           <div className="flex gap-2">
             <Button
@@ -183,70 +247,230 @@ export default function EmployeePage() {
                 </div>
               )}
               <div className="flex-1">
-                <h2 className="text-xl font-bold text-white">{employee.name}</h2>
-                <p className="text-base font-medium text-zinc-300">{employee.position}</p>
+                <h2 className="text-xl font-bold text-white">
+                  {employee.name}
+                </h2>
+                <p className="text-base font-medium text-zinc-300">
+                  {employee.position}
+                </p>
+                {(employee.salaryDate ||
+                  typeof employee.salaryAmountMinor === "number") && (
+                  <p className="mt-1 text-sm text-zinc-400">
+                    Salary: {formatMoney(employee.salaryAmountMinor ?? null)}
+                    {employee.salaryDate ? ` • Due ${employee.salaryDate}` : ""}
+                  </p>
+                )}
+                {(employee.salaryScheduleDays && employee.salaryScheduleDays.length > 0) && (
+                  <p className="mt-1 text-sm text-zinc-400">
+                    Office Days: {employee.salaryScheduleDays.join(", ")}
+                  </p>
+                )}
               </div>
               <div className="text-right">
                 <p className="text-sm text-zinc-400">{employee.email}</p>
-                {employee.phone && <p className="text-sm text-zinc-400">{employee.phone}</p>}
+                {employee.phone && (
+                  <p className="text-sm text-zinc-400">{employee.phone}</p>
+                )}
               </div>
             </div>
           </section>
         )}
 
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
-          <div className="mb-4 flex items-center gap-2">
-            <Clock className="size-5 text-[#e78a53]" />
-            <h2 className="text-lg font-semibold text-white">Attendance</h2>
-          </div>
+        <div className="mb-6 flex gap-2">
+          <Button
+            type="button"
+            onClick={() => setActiveTab("attendance")}
+            className={
+              activeTab === "attendance"
+                ? "bg-[#e78a53] text-white hover:bg-[#e78a53]/90"
+                : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+            }
+          >
+            Attendance
+          </Button>
+          <Button
+            type="button"
+            onClick={() => setActiveTab("payments")}
+            className={
+              activeTab === "payments"
+                ? "bg-[#e78a53] text-white hover:bg-[#e78a53]/90"
+                : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+            }
+          >
+            Payments
+          </Button>
+        </div>
 
-          {clockMessage && (
-            <p
-              className={`mb-4 rounded-lg border px-3 py-2 text-sm ${
-                clockMessage.includes("success")
-                  ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
-                  : "border-red-500/20 bg-red-500/10 text-red-400"
-              }`}
-            >
-              {clockMessage}
-            </p>
-          )}
+        {activeTab === "attendance" ? (
+          <section className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+            <div className="mb-4 flex items-center gap-2">
+              <Clock className="size-5 text-[#e78a53]" />
+              <h2 className="text-lg font-semibold text-white">Attendance</h2>
+            </div>
 
-          {clockLoading ? (
-            <div className="flex items-center gap-2">
-              <Loader2 className="size-5 animate-spin text-[#e78a53]" />
-              <span className="text-zinc-400">Recording attendance...</span>
-            </div>
-          ) : (
-            <div className="flex gap-4">
-              <Button
-                onClick={() => handleClockAction("clockIn")}
-                className="flex-1 bg-emerald-600 text-white hover:bg-emerald-600/90"
+            {clockMessage && (
+              <p
+                className={`mb-4 rounded-lg border px-3 py-2 text-sm ${
+                  clockMessage.includes("success")
+                    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                    : "border-red-500/20 bg-red-500/10 text-red-400"
+                }`}
               >
-                <Clock className="mr-2 size-4" />
-                Clock In
-              </Button>
-              <Button
-                onClick={() => handleClockAction("clockOut")}
-                className="flex-1 bg-orange-600 text-white hover:bg-orange-600/90"
-              >
-                <Clock className="mr-2 size-4" />
-                Clock Out
-              </Button>
+                {clockMessage}
+              </p>
+            )}
+
+            {clockLoading ? (
+              <div className="flex items-center gap-2">
+                <Loader2 className="size-5 animate-spin text-[#e78a53]" />
+                <span className="text-zinc-400">Recording attendance...</span>
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Button
+                    onClick={() => handleClockAction("clockIn")}
+                    className="bg-emerald-600 text-white hover:bg-emerald-600/90"
+                  >
+                    <Clock className="mr-2 size-4" />
+                    Clock In
+                  </Button>
+                  <Button
+                    onClick={() => handleClockAction("clockOut")}
+                    className="bg-orange-600 text-white hover:bg-orange-600/90"
+                  >
+                    <Clock className="mr-2 size-4" />
+                    Clock Out
+                  </Button>
+                  <Button
+                    onClick={() => handleClockAction("lunchBreakIn")}
+                    className="bg-sky-700 text-white hover:bg-sky-700/90"
+                  >
+                    <Clock className="mr-2 size-4" />
+                    Lunch Break In
+                  </Button>
+                  <Button
+                    onClick={() => handleClockAction("lunchBreakOut")}
+                    className="bg-indigo-700 text-white hover:bg-indigo-700/90"
+                  >
+                    <Clock className="mr-2 size-4" />
+                    Lunch Break Out
+                  </Button>
+                </div>
+                <p className="mt-3 text-sm text-zinc-500">
+                  Click any action and scan the workplace QR code.
+                </p>
+              </>
+            )}
+          </section>
+        ) : (
+          <section className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white">Payments</h2>
+              <div className="flex gap-2">
+                <Button
+                  variant={paymentTab === "all" ? "default" : "outline"}
+                  onClick={() => setPaymentTab("all")}
+                  className={
+                    paymentTab === "all"
+                      ? "bg-[#e78a53] text-white hover:bg-[#e78a53]/90"
+                      : "border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                  }
+                >
+                  All
+                </Button>
+                <Button
+                  variant={paymentTab === "paid" ? "default" : "outline"}
+                  onClick={() => setPaymentTab("paid")}
+                  className={
+                    paymentTab === "paid"
+                      ? "bg-[#e78a53] text-white hover:bg-[#e78a53]/90"
+                      : "border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                  }
+                >
+                  Paid
+                </Button>
+              </div>
             </div>
-          )}
-          <p className="mt-3 text-sm text-zinc-500">
-            Click the button to scan the workplace QR code
-          </p>
-        </section>
+
+            {paymentsError && (
+              <p className="mb-3 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+                {paymentsError}
+              </p>
+            )}
+
+            {paymentsLoading ? (
+              <div className="flex items-center gap-2">
+                <Loader2 className="size-5 animate-spin text-[#e78a53]" />
+                <span className="text-zinc-400">Loading payments...</span>
+              </div>
+            ) : paymentRows.length === 0 ? (
+              <p className="text-sm text-zinc-500">No payment records found.</p>
+            ) : (
+              <div className="overflow-hidden rounded-lg border border-zinc-800">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-zinc-900">
+                    <tr className="border-b border-zinc-800">
+                      <th className="px-3 py-2 text-zinc-400">No.</th>
+                      <th className="px-3 py-2 text-zinc-400">Cycle</th>
+                      <th className="px-3 py-2 text-zinc-400">Due</th>
+                      <th className="px-3 py-2 text-zinc-400">Amount</th>
+                      <th className="px-3 py-2 text-zinc-400">Status</th>
+                      <th className="px-3 py-2 text-zinc-400">Tx-Ref</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paymentRows.map((payment, index) => (
+                      <tr
+                        key={payment.id}
+                        className="border-b border-zinc-800/80 last:border-0"
+                      >
+                        <td className="px-3 py-2 text-zinc-300">{index + 1}</td>
+                        <td className="px-3 py-2 text-zinc-300">
+                          {payment.cycleStartDate}
+                        </td>
+                        <td className="px-3 py-2 text-zinc-300">
+                          {payment.dueDate}
+                        </td>
+                        <td className="px-3 py-2 text-zinc-300">
+                          {formatMoney(payment.amountMinor)}
+                        </td>
+                        <td className="px-3 py-2">
+                          <span
+                            className={`inline-flex rounded-full px-2 py-0.5 text-xs ${
+                              payment.status === "PAID"
+                                ? "bg-emerald-500/20 text-emerald-400"
+                                : "bg-amber-500/20 text-amber-400"
+                            }`}
+                          >
+                            {payment.status}
+                          </span>
+                        </td>
+
+                        {payment.transactionReference ? (
+                          <td className="px-3 py-2 text-zinc-300">
+                            {payment.transactionReference}
+                          </td>
+                        ) : (
+                          <td className="px-3 py-2 text-zinc-300">-</td>
+                        )}
+                      
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
       </main>
 
       {showScanner && (
         <QRScanner
           onScan={handleQRScan}
           onClose={() => {
-            setShowScanner(false)
-            setClockAction(null)
+            setShowScanner(false);
+            setClockAction(null);
           }}
         />
       )}
@@ -255,8 +479,14 @@ export default function EmployeePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 p-6">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white">Change Password</h3>
-              <Button variant="ghost" size="sm" onClick={() => setShowPasswordForm(false)}>
+              <h3 className="text-lg font-semibold text-white">
+                Change Password
+              </h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowPasswordForm(false)}
+              >
                 <span className="text-zinc-400 hover:text-white">✕</span>
               </Button>
             </div>
@@ -322,5 +552,5 @@ export default function EmployeePage() {
         </div>
       )}
     </div>
-  )
+  );
 }

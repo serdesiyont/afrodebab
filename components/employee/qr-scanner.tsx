@@ -3,27 +3,18 @@
 import { useEffect, useRef, useState, useId } from "react"
 import { X, Camera, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Html5Qrcode } from "html5-qrcode"
 
 interface QRScannerProps {
   onScan: (data: string) => void
   onClose: () => void
 }
 
-declare global {
-  interface Window {
-    Html5Qrcode: new (elementId: string) => {
-      start: (constraints: MediaStreamConstraints, config: { fps: number; qrbox: { width: number; height: number } }, onScanSuccess: (decodedText: string) => void, onScanFailure: (error: string) => void) => Promise<void>
-      stop: () => Promise<void>
-      isScanning: boolean
-    }
-  }
-}
-
 export function QRScanner({ onScan, onClose }: QRScannerProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)
-  const scannerRef = useRef<Window["Html5Qrcode"] | null>(null)
+  const scannerRef = useRef<Html5Qrcode | null>(null)
   const scannerId = useId()
 
   useEffect(() => {
@@ -34,34 +25,20 @@ export function QRScanner({ onScan, onClose }: QRScannerProps) {
     }
   }, [])
 
-  const loadHtml5Qrcode = async () => {
-    if (window.Html5Qrcode) return window.Html5Qrcode
-
-    return new Promise<void>((resolve, reject) => {
-      const script = document.createElement("script")
-      script.src = "https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"
-      script.onload = () => resolve()
-      script.onerror = () => reject(new Error("Failed to load QR scanner"))
-      document.head.appendChild(script)
-    })
-  }
-
   const startScanning = async () => {
     setError(null)
     setLoading(true)
 
     try {
-      await loadHtml5Qrcode()
-
-      const elementId = `qr-scanner-${scannerId.replace(/:/g, '')}`
+      const elementId = `qr-scanner-${scannerId.replace(/:/g, "")}`
       let container = document.getElementById(elementId)
-      
+
       if (!container) {
         container = document.createElement("div")
         container.id = elementId
         container.style.width = "100%"
         container.style.height = "100%"
-        
+
         const wrapper = document.getElementById("qr-wrapper")
         if (wrapper) {
           wrapper.innerHTML = ""
@@ -69,23 +46,26 @@ export function QRScanner({ onScan, onClose }: QRScannerProps) {
         }
       }
 
-      const html5QrCode = new window.Html5Qrcode(elementId)
+      const html5QrCode = new Html5Qrcode(elementId)
       scannerRef.current = html5QrCode
 
       await html5QrCode.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         (decodedText) => {
-          html5QrCode.stop().then(() => {
-            setScanning(false)
-            scannerRef.current = null
-            onScan(decodedText)
-          }).catch(() => {
-            setScanning(false)
-            scannerRef.current = null
-          })
+          html5QrCode
+            .stop()
+            .then(() => {
+              setScanning(false)
+              scannerRef.current = null
+              onScan(decodedText)
+            })
+            .catch(() => {
+              setScanning(false)
+              scannerRef.current = null
+            })
         },
-        () => {}
+        () => {},
       )
 
       setScanning(true)

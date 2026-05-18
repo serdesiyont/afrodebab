@@ -11,13 +11,20 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { action, qrData } = body
+    const { action } = body
 
-    if (!action || !["clockIn", "clockOut"].includes(action)) {
+    if (!action || !["clockIn", "clockOut", "lunchBreakIn", "lunchBreakOut"].includes(action)) {
       return NextResponse.json({ error: "Invalid action" }, { status: 400 })
     }
 
-    const endpoint = action === "clockIn" ? "/employee/me/clock-in" : "/employee/me/clock-out"
+    const endpoint =
+      action === "clockIn"
+        ? "/employee/me/clock-in"
+        : action === "clockOut"
+          ? "/employee/me/clock-out"
+          : action === "lunchBreakIn"
+            ? "/employee/me/lunch-break-in"
+            : "/employee/me/lunch-break-out"
 
     const res = await fetch(`${CMS_BASE_URL}${endpoint}`, {
       method: "POST",

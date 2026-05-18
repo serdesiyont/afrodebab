@@ -50,6 +50,19 @@ export async function PUT(
 
   try {
     const body = await request.json()
+    const payload = {
+      date: typeof body.date === "string" ? body.date : "",
+      clockInAt: typeof body.clockInAt === "string" ? body.clockInAt : "",
+      clockOutAt: typeof body.clockOutAt === "string" ? body.clockOutAt : "",
+      lunchBreakInAt:
+        typeof body.lunchBreakInAt === "string" ? body.lunchBreakInAt : body.lunchBreakInAt === null ? null : null,
+      lunchBreakOutAt:
+        typeof body.lunchBreakOutAt === "string"
+          ? body.lunchBreakOutAt
+          : body.lunchBreakOutAt === null
+            ? null
+            : null,
+    }
 
     const res = await fetch(`${CMS_BASE_URL}/admin/employees/${id}/attendance`, {
       method: "PUT",
@@ -57,7 +70,7 @@ export async function PUT(
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
     })
 
     const data = await res.json().catch(() => ({}))
