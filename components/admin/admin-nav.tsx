@@ -11,6 +11,8 @@ const navItems = [
   { href: "/admin/jobs", label: "Jobs" },
   { href: "/admin/events", label: "Events" },
   { href: "/admin/employees", label: "Employees" },
+  { href: "/admin/metrics", label: "Reports" },
+  { href: "/admin/peer-reviews", label: "Peer Reviews" },
   { href: "/admin/payments", label: "Payroll" },
   { href: "/admin/email-notifications", label: "Email Notifications" },
 ]

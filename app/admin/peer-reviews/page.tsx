@@ -27,8 +27,18 @@ const ratingOptions: Array<{ value: PeerReviewRatingValue; label: string }> = [
   { value: "NEEDS_IMPROVEMENT", label: "Needs improvement" },
 ];
 
+const formatPeerReviewRating = (rating: string | null | undefined) => {
+  if (!rating) return "—";
+  const match = ratingOptions.find((option) => option.value === rating);
+  if (match) return match.label;
+  return rating.replace(/_/g, " ");
+};
+
 const formatScore = (value: number | null | undefined) =>
   typeof value === "number" ? `${value.toFixed(2)}%` : "—";
+
+const formatAverageRating = (value: number | null | undefined) =>
+  typeof value === "number" ? value.toFixed(2) : "—";
 
 const scoreTone = (value: number | null | undefined) => {
   if (typeof value !== "number") return "text-zinc-400";
@@ -201,7 +211,7 @@ export default function AdminPeerReviewsPage() {
         }
         const review = data as AdminPeerReviewResponse;
         setAdminReview(review);
-        setAdminReviewRating(review.rating);
+        if (review.rating) setAdminReviewRating(review.rating);
         setAdminReviewFeedback(review.feedback ?? "");
       } catch (err) {
         setAdminReviewError(
@@ -307,7 +317,7 @@ export default function AdminPeerReviewsPage() {
       }
       const saved = data as AdminPeerReviewResponse;
       setAdminReview(saved);
-      setAdminReviewRating(saved.rating);
+      if (saved.rating) setAdminReviewRating(saved.rating);
       setAdminReviewFeedback(saved.feedback ?? "");
       setAdminReviewEditing(false);
     } catch (err) {
@@ -628,7 +638,7 @@ export default function AdminPeerReviewsPage() {
                     setAdminReviewEditing((prev) => !prev);
                   }}
                 >
-                  {adminReview ? "Edit feedback" : "Give feedback"}
+                  {adminReview?.feedback ? "Edit feedback" : "Give feedback"}
                 </Button>
               ) : null}
             </div>
@@ -678,9 +688,9 @@ export default function AdminPeerReviewsPage() {
                   ) : adminReview ? (
                     <div className="mt-2 space-y-2">
                       <p className="text-xs text-zinc-400">
-                        {adminReview.reviewerName} ·{" "}
+                        {adminReview.reviewerName ?? "Admin"} ·{" "}
                         <span className="font-medium text-zinc-200">
-                          {adminReview.rating.replace(/_/g, " ")}
+                          {formatPeerReviewRating(adminReview.rating)}
                         </span>
                       </p>
                       <p className="text-sm text-zinc-200">{adminReview.feedback}</p>
@@ -769,7 +779,7 @@ export default function AdminPeerReviewsPage() {
                           </span>
                         </div>
                         <p className="mt-2 text-sm text-zinc-300">
-                          Average rating: {principle.averageRating.toFixed(2)}
+                          Average rating: {formatAverageRating(principle.averageRating)}
                         </p>
                       </div>
                     ))}

@@ -2,12 +2,14 @@
 
 import type React from "react"
 import { useState, useEffect, useCallback } from "react"
-import { Loader2, User, Clock, LogOut, Key } from "lucide-react"
+import { Loader2, User, Clock, LogOut, Key, BarChart3, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { clearAdminClientToken } from "@/lib/admin-client-auth"
 import { QRScanner } from "@/components/employee/qr-scanner"
+import { EmployeeReport } from "@/components/employee/employee-report"
+import { EmployeePeerReviews } from "@/components/employee/employee-peer-reviews"
 import type { EmployeePaymentApi } from "@/lib/employees-api"
 
 interface EmployeeInfo {
@@ -25,7 +27,9 @@ interface EmployeeInfo {
 const QR_VALID_URL = "https://attendance.gogerami.com"
 
 export default function EmployeePage() {
-  const [activeTab, setActiveTab] = useState<"attendance" | "payments">("attendance")
+  const [activeTab, setActiveTab] = useState<
+    "attendance" | "payments" | "report" | "peer-reviews"
+  >("attendance")
   const [employee, setEmployee] = useState<EmployeeInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentPassword, setCurrentPassword] = useState("")
@@ -299,6 +303,30 @@ export default function EmployeePage() {
           >
             Payments
           </Button>
+          <Button
+            type="button"
+            onClick={() => setActiveTab("report")}
+            className={
+              activeTab === "report"
+                ? "bg-[#e78a53] text-white hover:bg-[#e78a53]/90"
+                : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+            }
+          >
+            <BarChart3 className="mr-2 size-4" />
+            Report
+          </Button>
+          <Button
+            type="button"
+            onClick={() => setActiveTab("peer-reviews")}
+            className={
+              activeTab === "peer-reviews"
+                ? "bg-[#e78a53] text-white hover:bg-[#e78a53]/90"
+                : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+            }
+          >
+            <MessageSquare className="mr-2 size-4" />
+            Peer Reviews
+          </Button>
         </div>
 
         {activeTab === "attendance" ? (
@@ -363,7 +391,7 @@ export default function EmployeePage() {
               </>
             )}
           </section>
-        ) : (
+        ) : activeTab === "payments" ? (
           <section className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-white">Payments</h2>
@@ -462,6 +490,10 @@ export default function EmployeePage() {
               </div>
             )}
           </section>
+        ) : activeTab === "report" ? (
+          <EmployeeReport />
+        ) : (
+          <EmployeePeerReviews />
         )}
       </main>
 
