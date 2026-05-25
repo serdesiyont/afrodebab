@@ -9,6 +9,7 @@ import {
   Clock,
   CreditCard,
   Key,
+  Link2,
   Loader2,
   LogOut,
   MessageSquare,
@@ -46,6 +47,16 @@ export function EmployeeShell({ children }: EmployeeShellProps) {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const [showConnectForm, setShowConnectForm] = useState(false)
+  const [connectedAccounts, setConnectedAccounts] = useState<{
+    githubUsername?: string | null
+    trelloUsername?: string | null
+    telegramUsername?: string | null
+  } | null>(null)
+  const [connectForm, setConnectForm] = useState({ githubUsername: "", trelloUsername: "", telegramUsername: "" })
+  const [connectSubmitting, setConnectSubmitting] = useState(false)
+  const [connectError, setConnectError] = useState("")
+  const [connectSuccess, setConnectSuccess] = useState("")
 
   const tabs = useMemo(
     () => [
@@ -74,9 +85,74 @@ export function EmployeeShell({ children }: EmployeeShellProps) {
     }
   }, [])
 
+  const fetchConnectedAccounts = useCallback(async () => {
+    try {
+      const res = await fetch("/api/employee/me/connected-accounts")
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) return
+      setConnectedAccounts(data)
+      setConnectForm({
+        githubUsername: data.githubUsername ?? "",
+        trelloUsername: data.trelloUsername ?? "",
+        telegramUsername: data.telegramUsername ?? "",
+      })
+    } catch {
+      // silently fail
+    }
+  }, [])
+
   useEffect(() => {
     fetchEmployee()
-  }, [fetchEmployee])
+    fetchConnectedAccounts()
+  }, [fetchEmployee, fetchConnectedAccounts])
+
+  const handleOpenConnect = () => {
+    setConnectError("")
+    setConnectSuccess("")
+    setShowConnectForm(true)
+  }
+
+  const handleConnectSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setConnectError("")
+    setConnectSuccess("")
+    setConnectSubmitting(true)
+    try {
+      const hasExisting =
+        connectedAccounts?.githubUsername ||
+        connectedAccounts?.trelloUsername ||
+        connectedAccounts?.telegramUsername
+      const body: Record<string, string | null> = {}
+      const g = connectForm.githubUsername.trim()
+      const t = connectForm.trelloUsername.trim()
+      const tg = connectForm.telegramUsername.trim()
+      body.githubUsername = g || null
+      body.trelloUsername = t || null
+      body.telegramUsername = tg || null
+
+      const res = await fetch("/api/employee/me/connected-accounts", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setConnectError((data as { error?: string }).error ?? "Failed to update connected accounts")
+        setConnectSubmitting(false)
+        return
+      }
+      setConnectedAccounts(data)
+      setConnectSuccess(hasExisting ? "Connected accounts updated." : "Connected accounts saved.")
+      setConnectSubmitting(false)
+      setTimeout(() => {
+        setShowConnectForm(false)
+        setConnectSuccess("")
+      }, 2000)
+    } catch {
+      setConnectError("Something went wrong. Please try again.")
+      setConnectSubmitting(false)
+    }
+  }
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -142,6 +218,14 @@ export function EmployeeShell({ children }: EmployeeShellProps) {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+              onClick={handleOpenConnect}
+            >
+              <Link2 className="mr-2 size-4" />
+              Connect
+            </Button>
             <Button
               variant="outline"
               className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
@@ -290,6 +374,99 @@ export function EmployeeShell({ children }: EmployeeShellProps) {
                   type="button"
                   variant="outline"
                   onClick={() => setShowPasswordForm(false)}
+                  className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showConnectForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-white">Connected Accounts</h3>
+              <Button variant="ghost" size="sm" onClick={() => setShowConnectForm(false)}>
+                <span className="text-zinc-400 hover:text-white">✕</span>
+              </Button>
+            </div>
+
+            <form onSubmit={handleConnectSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="connect-github" className="text-zinc-200">
+                  GitHub username
+                </Label>
+                <Input
+                  id="connect-github"
+                  placeholder="e.g. serdesiyont (without @)"
+                  value={connectForm.githubUsername}
+                  onChange={(e) =>
+                    setConnectForm((prev) => ({ ...prev, githubUsername: e.target.value }))
+                  }
+                  className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="connect-trello" className="text-zinc-200">
+                  Trello username
+                </Label>
+                <Input
+                  id="connect-trello"
+                  placeholder="e.g. serdesiyont (without @)"
+                  value={connectForm.trelloUsername}
+                  onChange={(e) =>
+                    setConnectForm((prev) => ({ ...prev, trelloUsername: e.target.value }))
+                  }
+                  className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="connect-telegram" className="text-zinc-200">
+                  Telegram username
+                </Label>
+                <Input
+                  id="connect-telegram"
+                  placeholder="e.g. serdesiyont (without @)"
+                  value={connectForm.telegramUsername}
+                  onChange={(e) =>
+                    setConnectForm((prev) => ({ ...prev, telegramUsername: e.target.value }))
+                  }
+                  className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
+                />
+              </div>
+
+              {connectedAccounts && (connectedAccounts.githubUsername || connectedAccounts.trelloUsername || connectedAccounts.telegramUsername) && (
+                <p className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm text-amber-400">
+                  Updating your connected accounts will reset your existing report progress. Your previous stats will be lost.
+                </p>
+              )}
+
+              {connectError && (
+                <p className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+                  {connectError}
+                </p>
+              )}
+              {connectSuccess && (
+                <p className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
+                  {connectSuccess}
+                </p>
+              )}
+
+              <div className="flex gap-2">
+                <Button
+                  type="submit"
+                  disabled={connectSubmitting}
+                  className="flex-1 bg-[#e78a53] text-white hover:bg-[#e78a53]/90"
+                >
+                  {connectSubmitting ? "Saving..." : connectedAccounts && (connectedAccounts.githubUsername || connectedAccounts.trelloUsername || connectedAccounts.telegramUsername) ? "Update" : "Connect"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowConnectForm(false)}
                   className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
                 >
                   Cancel

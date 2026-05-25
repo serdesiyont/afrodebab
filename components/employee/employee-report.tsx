@@ -115,6 +115,26 @@ export function EmployeeReport() {
   const [peerReviewScore, setPeerReviewScore] = useState<number | null | undefined>(undefined);
   const [peerReviewScoreLoading, setPeerReviewScoreLoading] = useState(false);
 
+  const [connectedAccounts, setConnectedAccounts] = useState<{
+    githubUsername?: string | null
+    trelloUsername?: string | null
+    telegramUsername?: string | null
+  } | null>(null);
+  const hasGithub = !!connectedAccounts?.githubUsername
+  const hasTrello = !!connectedAccounts?.trelloUsername
+  const hasTelegram = !!connectedAccounts?.telegramUsername
+
+  const fetchConnectedAccounts = useCallback(async () => {
+    try {
+      const res = await fetch("/api/employee/me/connected-accounts")
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) return
+      setConnectedAccounts(data)
+    } catch {
+      // silently fail
+    }
+  }, []);
+
   const telegramRange = useMemo(() => {
     if (!periodStart || !periodEnd) return null;
     return {
@@ -326,6 +346,10 @@ export function EmployeeReport() {
   }, [periodStart, periodEnd]);
 
   useEffect(() => {
+    fetchConnectedAccounts()
+  }, [fetchConnectedAccounts])
+
+  useEffect(() => {
     loadReport(false);
   }, [loadReport]);
 
@@ -334,16 +358,16 @@ export function EmployeeReport() {
   }, [loadTimeSpent]);
 
   useEffect(() => {
-    loadGithubReport();
-  }, [loadGithubReport]);
+    if (hasGithub) loadGithubReport()
+  }, [loadGithubReport, hasGithub]);
 
   useEffect(() => {
-    loadTrelloReport();
-  }, [loadTrelloReport]);
+    if (hasTrello) loadTrelloReport()
+  }, [loadTrelloReport, hasTrello]);
 
   useEffect(() => {
-    loadTelegramReport();
-  }, [loadTelegramReport]);
+    if (hasTelegram) loadTelegramReport()
+  }, [loadTelegramReport, hasTelegram]);
 
   useEffect(() => {
     loadPeerReviewLeadershipScore();
@@ -522,291 +546,297 @@ export function EmployeeReport() {
         </div>
       )}
 
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="text-base font-semibold text-white">Github Stats</h3>
-            <p className="text-sm text-zinc-400">
-              Your commits, PRs, reviews, and issues.
-            </p>
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            className="border-zinc-700 text-zinc-200 hover:bg-zinc-800"
-            onClick={loadGithubReport}
-            disabled={githubLoading}
-          >
-            {githubLoading ? (
-              <Loader2 className="mr-2 size-4 animate-spin" />
-            ) : (
-              <RefreshCw className="mr-2 size-4" />
-            )}
-            Reload
-          </Button>
-        </div>
-
-        {githubError && (
-          <p className="mb-3 text-sm text-red-400">{githubError}</p>
-        )}
-
-        {githubLoading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="size-7 animate-spin text-[#e78a53]" />
-          </div>
-        ) : githubReport ? (
-          <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-                <p className="text-xs uppercase tracking-wide text-zinc-500">Commits</p>
-                <p className="mt-2 text-2xl font-semibold text-white">
-                  {githubReport.totalCommits}
-                </p>
-              </div>
-              <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-                <p className="text-xs uppercase tracking-wide text-zinc-500">PRs Opened</p>
-                <p className="mt-2 text-2xl font-semibold text-white">
-                  {githubReport.prsOpened}
-                </p>
-              </div>
-              <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-                <p className="text-xs uppercase tracking-wide text-zinc-500">PRs Merged</p>
-                <p className="mt-2 text-2xl font-semibold text-white">
-                  {githubReport.prsMerged}
-                </p>
-              </div>
-              <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-                <p className="text-xs uppercase tracking-wide text-zinc-500">PR Reviews</p>
-                <p className="mt-2 text-2xl font-semibold text-white">
-                  {githubReport.prReviews}
-                </p>
-              </div>
-              <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-                <p className="text-xs uppercase tracking-wide text-zinc-500">PRs Closed</p>
-                <p className="mt-2 text-2xl font-semibold text-white">
-                  {githubReport.prsClosed}
-                </p>
-              </div>
-              <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-                <p className="text-xs uppercase tracking-wide text-zinc-500">Issues Opened</p>
-                <p className="mt-2 text-2xl font-semibold text-white">
-                  {githubReport.issuesOpened}
-                </p>
-              </div>
-              <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-                <p className="text-xs uppercase tracking-wide text-zinc-500">Issues Closed</p>
-                <p className="mt-2 text-2xl font-semibold text-white">
-                  {githubReport.issuesClosed}
-                </p>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-6 text-sm text-zinc-500">
-            GitHub stats are not available for your account.
-          </div>
-        )}
-      </section>
-
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="text-base font-semibold text-white">
-              Telegram Support
-            </h3>
-            <p className="text-sm text-zinc-400">
-              Ticket totals and resolution timing.
-            </p>
-            {telegramReport?.telegramUsername && (
-              <p className="text-xs text-zinc-500">
-                @{telegramReport.telegramUsername}
+      {hasGithub ? (
+        <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-base font-semibold text-white">Github Stats</h3>
+              <p className="text-sm text-zinc-400">
+                Your commits, PRs, reviews, and issues.
               </p>
-            )}
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-zinc-700 text-zinc-200 hover:bg-zinc-800"
+              onClick={loadGithubReport}
+              disabled={githubLoading}
+            >
+              {githubLoading ? (
+                <Loader2 className="mr-2 size-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 size-4" />
+              )}
+              Reload
+            </Button>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            className="border-zinc-700 text-zinc-200 hover:bg-zinc-800"
-            onClick={loadTelegramReport}
-            disabled={telegramLoading}
-          >
-            {telegramLoading ? (
-              <Loader2 className="mr-2 size-4 animate-spin" />
-            ) : (
-              <RefreshCw className="mr-2 size-4" />
-            )}
-            Reload
-          </Button>
-        </div>
 
-        {telegramErrorToShow && (
-          <p className="mb-3 text-sm text-red-400">{telegramErrorToShow}</p>
-        )}
+          {githubError && (
+            <p className="mb-3 text-sm text-red-400">{githubError}</p>
+          )}
 
-        {telegramLoading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="size-7 animate-spin text-[#e78a53]" />
+          {githubLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="size-7 animate-spin text-[#e78a53]" />
+            </div>
+          ) : githubReport ? (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">Commits</p>
+                  <p className="mt-2 text-2xl font-semibold text-white">
+                    {githubReport.totalCommits}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">PRs Opened</p>
+                  <p className="mt-2 text-2xl font-semibold text-white">
+                    {githubReport.prsOpened}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">PRs Merged</p>
+                  <p className="mt-2 text-2xl font-semibold text-white">
+                    {githubReport.prsMerged}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">PR Reviews</p>
+                  <p className="mt-2 text-2xl font-semibold text-white">
+                    {githubReport.prReviews}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">PRs Closed</p>
+                  <p className="mt-2 text-2xl font-semibold text-white">
+                    {githubReport.prsClosed}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">Issues Opened</p>
+                  <p className="mt-2 text-2xl font-semibold text-white">
+                    {githubReport.issuesOpened}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">Issues Closed</p>
+                  <p className="mt-2 text-2xl font-semibold text-white">
+                    {githubReport.issuesClosed}
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-6 text-sm text-zinc-500">
+              GitHub stats are not available for your account.
+            </div>
+          )}
+        </section>
+      ) : null}
+
+      {hasTelegram ? (
+        <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-base font-semibold text-white">
+                Telegram Support
+              </h3>
+              <p className="text-sm text-zinc-400">
+                Ticket totals and resolution timing.
+              </p>
+              {telegramReport?.telegramUsername && (
+                <p className="text-xs text-zinc-500">
+                  @{telegramReport.telegramUsername}
+                </p>
+              )}
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-zinc-700 text-zinc-200 hover:bg-zinc-800"
+              onClick={loadTelegramReport}
+              disabled={telegramLoading}
+            >
+              {telegramLoading ? (
+                <Loader2 className="mr-2 size-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 size-4" />
+              )}
+              Reload
+            </Button>
           </div>
-        ) : telegramReport ? (
-          <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
+          {telegramErrorToShow && (
+            <p className="mb-3 text-sm text-red-400">{telegramErrorToShow}</p>
+          )}
+
+          {telegramLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="size-7 animate-spin text-[#e78a53]" />
+            </div>
+          ) : telegramReport ? (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">
+                    Pending
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold text-white">
+                    {telegramReport.totals.pending}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">
+                    In Progress
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold text-white">
+                    {telegramReport.totals.inProgress}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">
+                    Resolved
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold text-white">
+                    {telegramReport.totals.resolved}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">
+                    Total
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold text-white">
+                    {telegramReport.totals.total}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">
+                    First Status → Resolved
+                  </p>
+                  <p className="mt-2 text-xl font-semibold text-white">
+                    {formatDurationMs(
+                      telegramReport.averages.msFromFirstStatusChangeToResolved,
+                    )}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">
+                    Created → Resolved
+                  </p>
+                  <p className="mt-2 text-xl font-semibold text-white">
+                    {formatDurationMs(
+                      telegramReport.averages.msFromCreatedAtToResolved,
+                    )}
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-6 text-sm text-zinc-500">
+              Telegram support stats are not available for your account.
+            </div>
+          )}
+        </section>
+      ) : null}
+
+      {hasTrello ? (
+        <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-base font-semibold text-white">Trello Stats</h3>
+              <p className="text-sm text-zinc-400">
+                Cards, comments, and checklist activity.
+              </p>
+              {trelloReport?.trelloUsername && (
+                <p className="text-xs text-zinc-500">
+                  @{trelloReport.trelloUsername}
+                </p>
+              )}
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-zinc-700 text-zinc-200 hover:bg-zinc-800"
+              onClick={loadTrelloReport}
+              disabled={trelloLoading}
+            >
+              {trelloLoading ? (
+                <Loader2 className="mr-2 size-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 size-4" />
+              )}
+              Reload
+            </Button>
+          </div>
+
+          {trelloError && (
+            <p className="mb-3 text-sm text-red-400">{trelloError}</p>
+          )}
+
+          {trelloLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="size-7 animate-spin text-[#e78a53]" />
+            </div>
+          ) : trelloReport ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
                 <p className="text-xs uppercase tracking-wide text-zinc-500">
-                  Pending
+                  Cards Created
                 </p>
                 <p className="mt-2 text-2xl font-semibold text-white">
-                  {telegramReport.totals.pending}
+                  {trelloReport.cardsCreated}
                 </p>
               </div>
               <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
                 <p className="text-xs uppercase tracking-wide text-zinc-500">
-                  In Progress
+                  Cards Moved
                 </p>
                 <p className="mt-2 text-2xl font-semibold text-white">
-                  {telegramReport.totals.inProgress}
+                  {trelloReport.cardsMoved}
                 </p>
               </div>
               <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
                 <p className="text-xs uppercase tracking-wide text-zinc-500">
-                  Resolved
+                  Cards Archived
                 </p>
                 <p className="mt-2 text-2xl font-semibold text-white">
-                  {telegramReport.totals.resolved}
+                  {trelloReport.cardsArchived}
                 </p>
               </div>
               <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
                 <p className="text-xs uppercase tracking-wide text-zinc-500">
-                  Total
+                  Comments Added
                 </p>
                 <p className="mt-2 text-2xl font-semibold text-white">
-                  {telegramReport.totals.total}
-                </p>
-              </div>
-            </div>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-                <p className="text-xs uppercase tracking-wide text-zinc-500">
-                  First Status → Resolved
-                </p>
-                <p className="mt-2 text-xl font-semibold text-white">
-                  {formatDurationMs(
-                    telegramReport.averages.msFromFirstStatusChangeToResolved,
-                  )}
+                  {trelloReport.commentsAdded}
                 </p>
               </div>
               <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
                 <p className="text-xs uppercase tracking-wide text-zinc-500">
-                  Created → Resolved
+                  Check Items Done
                 </p>
-                <p className="mt-2 text-xl font-semibold text-white">
-                  {formatDurationMs(
-                    telegramReport.averages.msFromCreatedAtToResolved,
-                  )}
+                <p className="mt-2 text-2xl font-semibold text-white">
+                  {trelloReport.checkItemsCompleted}
+                </p>
+              </div>
+              <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
+                <p className="text-xs uppercase tracking-wide text-zinc-500">
+                  Attachments Added
+                </p>
+                <p className="mt-2 text-2xl font-semibold text-white">
+                  {trelloReport.attachmentsAdded}
                 </p>
               </div>
             </div>
-          </>
-        ) : (
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-6 text-sm text-zinc-500">
-            Telegram support stats are not available for your account.
-          </div>
-        )}
-      </section>
-
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="text-base font-semibold text-white">Trello Stats</h3>
-            <p className="text-sm text-zinc-400">
-              Cards, comments, and checklist activity.
-            </p>
-            {trelloReport?.trelloUsername && (
-              <p className="text-xs text-zinc-500">
-                @{trelloReport.trelloUsername}
-              </p>
-            )}
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            className="border-zinc-700 text-zinc-200 hover:bg-zinc-800"
-            onClick={loadTrelloReport}
-            disabled={trelloLoading}
-          >
-            {trelloLoading ? (
-              <Loader2 className="mr-2 size-4 animate-spin" />
-            ) : (
-              <RefreshCw className="mr-2 size-4" />
-            )}
-            Reload
-          </Button>
-        </div>
-
-        {trelloError && (
-          <p className="mb-3 text-sm text-red-400">{trelloError}</p>
-        )}
-
-        {trelloLoading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="size-7 animate-spin text-[#e78a53]" />
-          </div>
-        ) : trelloReport ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-              <p className="text-xs uppercase tracking-wide text-zinc-500">
-                Cards Created
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-white">
-                {trelloReport.cardsCreated}
-              </p>
+          ) : (
+            <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-6 text-sm text-zinc-500">
+              Trello stats are not available for your account.
             </div>
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-              <p className="text-xs uppercase tracking-wide text-zinc-500">
-                Cards Moved
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-white">
-                {trelloReport.cardsMoved}
-              </p>
-            </div>
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-              <p className="text-xs uppercase tracking-wide text-zinc-500">
-                Cards Archived
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-white">
-                {trelloReport.cardsArchived}
-              </p>
-            </div>
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-              <p className="text-xs uppercase tracking-wide text-zinc-500">
-                Comments Added
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-white">
-                {trelloReport.commentsAdded}
-              </p>
-            </div>
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-              <p className="text-xs uppercase tracking-wide text-zinc-500">
-                Check Items Done
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-white">
-                {trelloReport.checkItemsCompleted}
-              </p>
-            </div>
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-              <p className="text-xs uppercase tracking-wide text-zinc-500">
-                Attachments Added
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-white">
-                {trelloReport.attachmentsAdded}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-6 text-sm text-zinc-500">
-            Trello stats are not available for your account.
-          </div>
-        )}
-      </section>
+          )}
+        </section>
+      ) : null}
 
       <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
