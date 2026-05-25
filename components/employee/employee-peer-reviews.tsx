@@ -122,13 +122,19 @@ const normalizePeerReviewSelfResults = (
   }
 }
 
-export function EmployeePeerReviews() {
+type PeerReviewView = "new" | "scores"
+
+type EmployeePeerReviewsProps = {
+  view?: PeerReviewView
+}
+
+export function EmployeePeerReviews({ view = "new" }: EmployeePeerReviewsProps) {
   const [principles, setPrinciples] = useState<LeadershipPrincipleResponse[]>([])
   const [ratings, setRatings] = useState<Record<number, { rating: PeerReviewRatingValue; comment: string }>>({})
   const [submitLoading, setSubmitLoading] = useState(false)
   const [submitError, setSubmitError] = useState("")
   const [submitSuccess, setSubmitSuccess] = useState("")
-  const [peerReviewTab, setPeerReviewTab] = useState<"new" | "submitted">("new")
+  const peerReviewTab = view === "scores" ? "submitted" : "new"
   const [peerReviewPeriods, setPeerReviewPeriods] = useState<PeerReviewPeriodStatusResponse[]>([])
   const [periodsLoading, setPeriodsLoading] = useState(false)
   const [periodsError, setPeriodsError] = useState("")
@@ -289,13 +295,15 @@ export function EmployeePeerReviews() {
   }, [])
 
   useEffect(() => {
-    loadPrinciples()
     loadPeerReviewPeriods()
-    loadAvailableEmployees()
-  }, [loadAvailableEmployees, loadPeerReviewPeriods, loadPrinciples])
+    if (view === "new") {
+      loadPrinciples()
+      loadAvailableEmployees()
+    }
+  }, [loadAvailableEmployees, loadPeerReviewPeriods, loadPrinciples, view])
 
   useEffect(() => {
-    if (activePrinciples.length === 0) return
+    if (view !== "new" || activePrinciples.length === 0) return
     setRatings((prev) => {
       const next = { ...prev }
       activePrinciples.forEach((principle) => {
@@ -308,19 +316,21 @@ export function EmployeePeerReviews() {
   }, [activePrinciples])
 
   useEffect(() => {
+    if (view !== "new") return
     if (newPeriods.length > 0 && !newPeriods.some((period) => period.id === selectedNewPeriodId)) {
       setSelectedNewPeriodId(newPeriods[0]!.id)
     }
-  }, [newPeriods, selectedNewPeriodId])
+  }, [newPeriods, selectedNewPeriodId, view])
 
   useEffect(() => {
+    if (view !== "new") return
     if (
       availableEmployees.length > 0 &&
       !availableEmployees.some((employee) => employee.id === selectedRevieweeId)
     ) {
       setSelectedRevieweeId(availableEmployees[0]!.id)
     }
-  }, [availableEmployees, selectedRevieweeId])
+  }, [availableEmployees, selectedRevieweeId, view])
 
   useEffect(() => {
     if (resultsModalOpen && selectedSubmittedPeriodId) {
@@ -474,29 +484,10 @@ export function EmployeePeerReviews() {
             <MessageSquare className="size-5 text-[#e78a53]" />
             <h2 className="text-lg font-semibold text-white">Peer Reviews</h2>
           </div>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              onClick={() => setPeerReviewTab("new")}
-              className={
-                peerReviewTab === "new"
-                  ? "bg-[#e78a53] text-white hover:bg-[#e78a53]/90"
-                  : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-              }
-            >
-              New ({newPeriods.length})
-            </Button>
-            <Button
-              type="button"
-              onClick={() => setPeerReviewTab("submitted")}
-              className={
-                peerReviewTab === "submitted"
-                  ? "bg-[#e78a53] text-white hover:bg-[#e78a53]/90"
-                  : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-              }
-            >
-              My scores ({scorePeriods.length})
-            </Button>
+          <div className="rounded-full border border-zinc-800 bg-zinc-950/40 px-3 py-1 text-xs text-zinc-400">
+            {peerReviewTab === "new"
+              ? `New (${newPeriods.length})`
+              : `My scores (${scorePeriods.length})`}
           </div>
         </div>
         
@@ -561,12 +552,12 @@ export function EmployeePeerReviews() {
                     ? `${selectedNewPeriod.name ? `${selectedNewPeriod.name} ` : ""}`
                     : "—"}
                 </p>
-                <p className="mt-2 font-semibold text-white">Reviewing</p>
+                {/*<p className="mt-2 font-semibold text-white">Reviewing</p>
                 <p className="mt-1">
                   {selectedReviewee
                     ? `${selectedReviewee.name} · ${selectedReviewee.role} · ${selectedReviewee.department}`
                     : "—"}
-                </p>
+                </p>*/}
               </div>
 
               {activePrinciples.length === 0 ? (
@@ -868,7 +859,7 @@ export function EmployeePeerReviews() {
 
                 <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-white">Admin feedback</p>
+                    <p className="text-sm font-semibold text-white">Manager feedback</p>
                     {adminReview?.updatedAt ? (
                       <span className="text-xs text-zinc-500">
                         {new Date(adminReview.updatedAt).toLocaleString()}
@@ -886,11 +877,11 @@ export function EmployeePeerReviews() {
                   ) : adminReview ? (
                     <div className="mt-3 space-y-2">
                       <p className="text-xs text-zinc-400">
-                        {adminReview.reviewerName ?? "Admin"} ·{" "}
+                    
                         {(adminReview.rating ?? "—").replace(/_/g, " ")}
                       </p>
                       <p className="whitespace-pre-wrap text-sm text-zinc-200">
-                        {adminReview.feedback || ""}
+                       Feedback: "{adminReview.feedback || ""}"
                       </p>
                     </div>
                   ) : (
@@ -905,4 +896,3 @@ export function EmployeePeerReviews() {
     </div>
   )
 }
-

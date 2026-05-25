@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { GithubEmployeeReportResponse } from "@/lib/github-stats-api";
+import type { TelegramSupportReportResponse } from "@/lib/telegram-support-api";
+import type { TrelloEmployeeReportResponse } from "@/lib/trello-stats-api";
 import type {
   EmployeeMetricSummaryPage,
   EmployeeMetricSummaryResponse,
@@ -50,6 +52,20 @@ const formatMinutes = (minutes: number | null | undefined) => {
   return `${hrs}h ${mins}m`;
 };
 
+const formatDurationMs = (value: number | null | undefined) => {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  const totalMinutes = Math.floor(value / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+};
+
+const isMissingTelegramUsername = (message: string) => {
+  const normalized = message.toLowerCase();
+  return normalized.includes("telegram") && normalized.includes("not set");
+};
+
 export default function AdminMetricsPage() {
   const [reportMonth, setReportMonth] = useState(getCurrentUTCMonth);
   const { periodStart, periodEnd } = useMemo(
@@ -85,11 +101,29 @@ export default function AdminMetricsPage() {
   const [githubReport, setGithubReport] =
     useState<GithubEmployeeReportResponse | null>(null);
 
+  const [trelloLoading, setTrelloLoading] = useState(false);
+  const [trelloError, setTrelloError] = useState("");
+  const [trelloReport, setTrelloReport] =
+    useState<TrelloEmployeeReportResponse | null>(null);
+
+  const [employeesWithTelegram, setEmployeesWithTelegram] = useState<
+    Set<number>
+  >(new Set());
+  const [telegramLoading, setTelegramLoading] = useState(false);
+  const [telegramError, setTelegramError] = useState("");
+  const [telegramReport, setTelegramReport] =
+    useState<TelegramSupportReportResponse | null>(null);
+
   const [peerReviews, setPeerReviews] = useState<PeerReviewResponse[]>([]);
   const [peerReviewsError, setPeerReviewsError] = useState("");
   const [peerReviewSummaryByEmployeeId, setPeerReviewSummaryByEmployeeId] =
     useState<Record<number, PeerReviewSummaryEmployeeResponse>>({});
   const [peerReviewSummaryError, setPeerReviewSummaryError] = useState("");
+
+  const [githubSyncLoading, setGithubSyncLoading] = useState(false);
+  const [githubSyncMessage, setGithubSyncMessage] = useState("");
+  const [trelloSyncLoading, setTrelloSyncLoading] = useState(false);
+  const [trelloSyncMessage, setTrelloSyncMessage] = useState("");
 
   const averageOverall = useMemo(() => {
     const scored = metrics
@@ -99,6 +133,32 @@ export default function AdminMetricsPage() {
     const total = scored.reduce((sum, score) => sum + score, 0);
     return total / scored.length;
   }, [metrics]);
+
+  const telegramRange = useMemo(() => {
+    if (!periodStart || !periodEnd) return null;
+    return {
+      from: `${periodStart}T00:00:00.000Z`,
+      to: `${periodEnd}T23:59:59.999Z`,
+    };
+  }, [periodEnd, periodStart]);
+
+  const loadEmployeesWithTelegram = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/employees/with-telegram?size=1000");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return;
+      const ids = new Set<number>();
+      const content = (data as { content?: Array<{ id: number }> }).content;
+      if (Array.isArray(content)) {
+        content.forEach((emp) => {
+          if (typeof emp.id === "number") ids.add(emp.id);
+        });
+      }
+      setEmployeesWithTelegram(ids);
+    } catch {
+      // silently fail, telegram reports will just not be available
+    }
+  }, []);
 
   const buildMetricsParams = useCallback(
     (pageValue: number) => {
@@ -324,18 +384,96 @@ export default function AdminMetricsPage() {
     }
   }, []);
 
+  const loadTrelloReport = useCallback(async (employeeId: number) => {
+    setTrelloLoading(true);
+    setTrelloError("");
+    try {
+      const res = await fetch(`/api/admin/trello/report/${employeeId}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          (data as { error?: string }).error ?? "Failed to load Trello stats",
+        );
+      }
+      setTrelloReport(data as TrelloEmployeeReportResponse);
+    } catch (err) {
+      setTrelloError(
+        err instanceof Error ? err.message : "Failed to load Trello stats",
+      );
+      setTrelloReport(null);
+    } finally {
+      setTrelloLoading(false);
+    }
+  }, []);
+
+  const loadTelegramReport = useCallback(
+    async (employeeId: number) => {
+      if (!telegramRange) {
+        setTelegramError("Select a month to load Telegram support stats.");
+        return;
+      }
+      if (!employeesWithTelegram.has(employeeId)) {
+        setTelegramReport(null);
+        return;
+      }
+      setTelegramLoading(true);
+      setTelegramError("");
+      try {
+        const params = new URLSearchParams();
+        params.set("from", telegramRange.from);
+        params.set("to", telegramRange.to);
+        const res = await fetch(
+          `/api/admin/telegram/support/report/${employeeId}?${params.toString()}`,
+        );
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const errorMessage =
+            (data as { error?: string }).error ??
+            "Failed to load Telegram support stats";
+          if (res.status === 400 && isMissingTelegramUsername(errorMessage)) {
+            setTelegramReport(null);
+            setTelegramError("");
+            return;
+          }
+          throw new Error(errorMessage);
+        }
+        setTelegramReport(data as TelegramSupportReportResponse);
+      } catch (err) {
+        const message =
+          err instanceof Error
+            ? err.message
+            : "Failed to load Telegram support stats";
+        if (isMissingTelegramUsername(message)) {
+          setTelegramReport(null);
+          setTelegramError("");
+          return;
+        }
+        setTelegramError(message);
+        setTelegramReport(null);
+      } finally {
+        setTelegramLoading(false);
+      }
+    },
+    [telegramRange, employeesWithTelegram],
+  );
+
   const handleSearch = () => {
     loadMetrics(0);
     if (selectedEmployeeId) {
       loadDetails(selectedEmployeeId);
       loadTimeSpent(selectedEmployeeId);
       loadGithubReport(selectedEmployeeId);
+      loadTrelloReport(selectedEmployeeId);
     }
   };
 
   useEffect(() => {
     loadMetrics(0);
   }, [loadMetrics]);
+
+  useEffect(() => {
+    loadEmployeesWithTelegram();
+  }, [loadEmployeesWithTelegram]);
 
   const handleSelect = (summary: EmployeeMetricSummaryResponse) => {
     setSelectedEmployeeId(summary.employeeId);
@@ -351,10 +489,16 @@ export default function AdminMetricsPage() {
 
     setGithubReport(null);
     setGithubError("");
+    setTrelloReport(null);
+    setTrelloError("");
+    setTelegramReport(null);
+    setTelegramError("");
 
     loadDetails(summary.employeeId);
     loadTimeSpent(summary.employeeId);
     loadGithubReport(summary.employeeId);
+    loadTrelloReport(summary.employeeId);
+    loadTelegramReport(summary.employeeId);
   };
 
   const handleSnapshotRefresh = async () => {
@@ -387,6 +531,62 @@ export default function AdminMetricsPage() {
       );
     } finally {
       setDetailLoading(false);
+    }
+  };
+
+  const handleGithubSync = async () => {
+    setGithubSyncLoading(true);
+    setGithubSyncMessage("");
+    try {
+      const res = await fetch("/api/admin/github/sync", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          (data as { error?: string }).error ?? "Failed to sync GitHub",
+        );
+      }
+      const payload = data as { message?: string; syncedCount?: number };
+      const count =
+        typeof payload.syncedCount === "number"
+          ? ` (${payload.syncedCount})`
+          : "";
+      setGithubSyncMessage(
+        `${payload.message ?? "GitHub sync triggered"}${count}`,
+      );
+    } catch (err) {
+      setGithubSyncMessage(
+        err instanceof Error ? err.message : "Failed to sync GitHub",
+      );
+    } finally {
+      setGithubSyncLoading(false);
+    }
+  };
+
+  const handleTrelloSync = async () => {
+    setTrelloSyncLoading(true);
+    setTrelloSyncMessage("");
+    try {
+      const res = await fetch("/api/admin/trello/sync", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          (data as { error?: string }).error ?? "Failed to sync Trello",
+        );
+      }
+      const payload = data as { message?: string; syncedCount?: number };
+      const count =
+        typeof payload.syncedCount === "number"
+          ? ` (${payload.syncedCount})`
+          : "";
+      setTrelloSyncMessage(
+        `${payload.message ?? "Trello sync triggered"}${count}`,
+      );
+    } catch (err) {
+      setTrelloSyncMessage(
+        err instanceof Error ? err.message : "Failed to sync Trello",
+      );
+    } finally {
+      setTrelloSyncLoading(false);
     }
   };
 
@@ -434,11 +634,58 @@ export default function AdminMetricsPage() {
             feedback.
           </p>
         </div>
-        <div className="inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/60 px-4 py-2 text-sm text-zinc-300">
-          <BarChart3 className="size-4 text-[#e78a53]" />
-          Insights dashboard
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/60 px-4 py-2 text-sm text-zinc-300">
+            <BarChart3 className="size-4 text-[#e78a53]" />
+            Insights dashboard
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-zinc-700 text-zinc-200 hover:bg-zinc-800"
+              onClick={handleGithubSync}
+              disabled={githubSyncLoading}
+            >
+              {githubSyncLoading ? (
+                <Loader2 className="mr-2 size-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 size-4" />
+              )}
+              Sync GitHub
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-zinc-700 text-zinc-200 hover:bg-zinc-800"
+              onClick={handleTrelloSync}
+              disabled={trelloSyncLoading}
+            >
+              {trelloSyncLoading ? (
+                <Loader2 className="mr-2 size-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 size-4" />
+              )}
+              Sync Trello
+            </Button>
+          </div>
         </div>
       </div>
+
+      {(githubSyncMessage || trelloSyncMessage) && (
+        <div className="mb-4 flex flex-col gap-2 text-sm text-zinc-300">
+          {githubSyncMessage && (
+            <p className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2">
+              {githubSyncMessage}
+            </p>
+          )}
+          {trelloSyncMessage && (
+            <p className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2">
+              {trelloSyncMessage}
+            </p>
+          )}
+        </div>
+      )}
 
       <section className="mb-6 rounded-xl border border-zinc-800 bg-zinc-900/60 p-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_auto]">
@@ -692,6 +939,12 @@ export default function AdminMetricsPage() {
           setGithubReport(null);
           setGithubError("");
           setGithubLoading(false);
+          setTrelloReport(null);
+          setTrelloError("");
+          setTrelloLoading(false);
+          setTelegramReport(null);
+          setTelegramError("");
+          setTelegramLoading(false);
         }}
       >
         <Dialog.Portal>
@@ -910,6 +1163,224 @@ export default function AdminMetricsPage() {
                     ) : (
                       <p className="text-sm text-zinc-500">
                         GitHub stats are not available for this employee.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="mt-8">
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-semibold text-white">
+                          Trello Stats
+                        </h3>
+                        <p className="text-sm text-zinc-400">
+                          Cards, comments, and checklist activity.
+                        </p>
+                        {trelloReport?.trelloUsername && (
+                          <p className="text-xs text-zinc-500">
+                            @{trelloReport.trelloUsername}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-zinc-700 text-zinc-200 hover:bg-zinc-800"
+                        onClick={() =>
+                          selectedEmployeeId &&
+                          loadTrelloReport(selectedEmployeeId)
+                        }
+                        disabled={!selectedEmployeeId || trelloLoading}
+                      >
+                        {trelloLoading ? (
+                          <Loader2 className="mr-2 size-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="mr-2 size-4" />
+                        )}
+                        Reload
+                      </Button>
+                    </div>
+
+                    {trelloError && (
+                      <p className="mb-3 text-sm text-red-400">{trelloError}</p>
+                    )}
+
+                    {trelloLoading ? (
+                      <div className="flex justify-center py-8">
+                        <Loader2 className="size-7 animate-spin text-[#e78a53]" />
+                      </div>
+                    ) : trelloReport ? (
+                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-4">
+                          <p className="text-xs uppercase tracking-wide text-zinc-500">
+                            Cards Created
+                          </p>
+                          <p className="mt-2 text-2xl font-semibold text-white">
+                            {trelloReport.cardsCreated}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-4">
+                          <p className="text-xs uppercase tracking-wide text-zinc-500">
+                            Cards Moved
+                          </p>
+                          <p className="mt-2 text-2xl font-semibold text-white">
+                            {trelloReport.cardsMoved}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-4">
+                          <p className="text-xs uppercase tracking-wide text-zinc-500">
+                            Cards Archived
+                          </p>
+                          <p className="mt-2 text-2xl font-semibold text-white">
+                            {trelloReport.cardsArchived}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-4">
+                          <p className="text-xs uppercase tracking-wide text-zinc-500">
+                            Comments Added
+                          </p>
+                          <p className="mt-2 text-2xl font-semibold text-white">
+                            {trelloReport.commentsAdded}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-4">
+                          <p className="text-xs uppercase tracking-wide text-zinc-500">
+                            Check Items Done
+                          </p>
+                          <p className="mt-2 text-2xl font-semibold text-white">
+                            {trelloReport.checkItemsCompleted}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-4">
+                          <p className="text-xs uppercase tracking-wide text-zinc-500">
+                            Attachments Added
+                          </p>
+                          <p className="mt-2 text-2xl font-semibold text-white">
+                            {trelloReport.attachmentsAdded}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-zinc-500">
+                        Trello stats are not available for this employee.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="mt-8">
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-semibold text-white">
+                          Telegram Support
+                        </h3>
+                        <p className="text-sm text-zinc-400">
+                          Ticket totals and resolution timing.
+                        </p>
+                        {telegramReport?.telegramUsername && (
+                          <p className="text-xs text-zinc-500">
+                            @{telegramReport.telegramUsername}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-zinc-700 text-zinc-200 hover:bg-zinc-800"
+                        onClick={() =>
+                          selectedEmployeeId &&
+                          loadTelegramReport(selectedEmployeeId)
+                        }
+                        disabled={!selectedEmployeeId || telegramLoading}
+                      >
+                        {telegramLoading ? (
+                          <Loader2 className="mr-2 size-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="mr-2 size-4" />
+                        )}
+                        Reload
+                      </Button>
+                    </div>
+
+                    {telegramError && (
+                      <p className="mb-3 text-sm text-red-400">
+                        {telegramError}
+                      </p>
+                    )}
+
+                    {!employeesWithTelegram.has(
+                      selectedEmployeeId,
+                    ) ? (
+                      <p className="text-sm text-zinc-500">
+                        Telegram is not configured for this employee.
+                      </p>
+                    ) : telegramLoading ? (
+                      <div className="flex justify-center py-8">
+                        <Loader2 className="size-7 animate-spin text-[#e78a53]" />
+                      </div>
+                    ) : telegramReport ? (
+                      <>
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                          <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-4">
+                            <p className="text-xs uppercase tracking-wide text-zinc-500">
+                              Pending
+                            </p>
+                            <p className="mt-2 text-2xl font-semibold text-white">
+                              {telegramReport.totals.pending}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-4">
+                            <p className="text-xs uppercase tracking-wide text-zinc-500">
+                              In Progress
+                            </p>
+                            <p className="mt-2 text-2xl font-semibold text-white">
+                              {telegramReport.totals.inProgress}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-4">
+                            <p className="text-xs uppercase tracking-wide text-zinc-500">
+                              Resolved
+                            </p>
+                            <p className="mt-2 text-2xl font-semibold text-white">
+                              {telegramReport.totals.resolved}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-4">
+                            <p className="text-xs uppercase tracking-wide text-zinc-500">
+                              Total
+                            </p>
+                            <p className="mt-2 text-2xl font-semibold text-white">
+                              {telegramReport.totals.total}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                          <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-4">
+                            <p className="text-xs uppercase tracking-wide text-zinc-500">
+                              First Status → Resolved
+                            </p>
+                            <p className="mt-2 text-xl font-semibold text-white">
+                              {formatDurationMs(
+                                telegramReport.averages
+                                  .msFromFirstStatusChangeToResolved,
+                              )}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-4">
+                            <p className="text-xs uppercase tracking-wide text-zinc-500">
+                              Created → Resolved
+                            </p>
+                            <p className="mt-2 text-xl font-semibold text-white">
+                              {formatDurationMs(
+                                telegramReport.averages
+                                  .msFromCreatedAtToResolved,
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-sm text-zinc-500">
+                        Telegram support stats are not available.
                       </p>
                     )}
                   </div>
