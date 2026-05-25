@@ -843,8 +843,8 @@ export default function AdminMetricsPage() {
                 <th className="px-4 py-3">Role</th>
                 <th className="px-4 py-3">Department</th>
                 <th className="px-4 py-3">Overall</th>
-                <th className="px-4 py-3">Leadership</th>
-                <th className="px-4 py-3">Peer review</th>
+                {/*<th className="px-4 py-3">Leadership</th>
+                <th className="px-4 py-3">Peer review</th>*/}
                 <th className="px-4 py-3">Attendance</th>
                 <th className="px-4 py-3">Task</th>
                 <th className="px-4 py-3">Support</th>
@@ -880,7 +880,7 @@ export default function AdminMetricsPage() {
                     >
                       {formatScore(summary.overallScore)}
                     </td>
-                    <td
+                    {/*<td
                       className={`px-4 py-3 ${scoreTone(summary.leadershipScore)}`}
                     >
                       {formatScore(summary.leadershipScore)}
@@ -897,7 +897,7 @@ export default function AdminMetricsPage() {
                           </span>
                         )}
                       </div>
-                    </td>
+                    </td>*/}
                     <td
                       className={`px-4 py-3 ${scoreTone(summary.attendanceScore)}`}
                     >

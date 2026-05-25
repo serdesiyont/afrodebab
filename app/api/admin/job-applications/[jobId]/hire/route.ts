@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getAdminToken } from "@/lib/auth"
+import type { JobApi } from "@/lib/jobs-api"
 
 const CMS_BASE_URL = process.env.NEXT_PUBLIC_CMS_BASE_URL!
 
@@ -17,6 +18,18 @@ export async function POST(
     return NextResponse.json({ error: "Missing job id" }, { status: 400 })
   }
 
+  let job: JobApi | null = null
+  try {
+    const jobRes = await fetch(`${CMS_BASE_URL}/jobs/${encodeURIComponent(jobId)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (jobRes.ok) {
+      job = await jobRes.json()
+    }
+  } catch {
+    // non-fatal: proceed without job context
+  }
+
   try {
     const body = await request.json()
     const applicationId = Number(body.applicationId)
@@ -27,6 +40,8 @@ export async function POST(
       position: typeof body.position === "string" ? body.position.trim() : "",
       salaryDate: typeof body.salaryDate === "string" ? body.salaryDate.trim() : "",
       salaryAmountMinor: Math.trunc(salaryAmountMinor),
+      department: job?.department ?? null,
+      employmentStatus: job?.employmentType ?? null,
     }
 
     if (!Number.isFinite(payload.applicationId) || payload.applicationId <= 0) {

@@ -13,6 +13,7 @@ import {
   Loader2,
   LogOut,
   MessageSquare,
+  Pencil,
   Star,
   User,
 } from "lucide-react"
@@ -28,6 +29,7 @@ interface EmployeeInfo {
   phone: string
   position: string
   photo?: string | null
+  linkedinUrl?: string | null
   salaryDate?: string | null
   salaryAmountMinor?: number | null
   salaryScheduleDays?: string[]
@@ -57,6 +59,13 @@ export function EmployeeShell({ children }: EmployeeShellProps) {
   const [connectSubmitting, setConnectSubmitting] = useState(false)
   const [connectError, setConnectError] = useState("")
   const [connectSuccess, setConnectSuccess] = useState("")
+
+  const [showPhotoForm, setShowPhotoForm] = useState(false)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [photoSubmitting, setPhotoSubmitting] = useState(false)
+  const [photoError, setPhotoError] = useState("")
+  const [photoSuccess, setPhotoSuccess] = useState("")
 
   const tabs = useMemo(
     () => [
@@ -190,6 +199,62 @@ export function EmployeeShell({ children }: EmployeeShellProps) {
     window.location.href = "/login"
   }
 
+  const handleOpenPhoto = () => {
+    setPhotoError("")
+    setPhotoSuccess("")
+    setPhotoFile(null)
+    setPhotoPreview(employee?.photo ?? null)
+    setShowPhotoForm(true)
+  }
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoError("Photo must be 5 MB or smaller")
+      return
+    }
+    setPhotoFile(file)
+    setPhotoPreview(URL.createObjectURL(file))
+    setPhotoError("")
+  }
+
+  const handlePhotoSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!photoFile) {
+      setPhotoError("Please select a photo")
+      return
+    }
+    setPhotoError("")
+    setPhotoSuccess("")
+    setPhotoSubmitting(true)
+    try {
+      const formData = new FormData()
+      formData.append("photo", photoFile)
+
+      const res = await fetch("/api/employee/me/photo", {
+        method: "POST",
+        body: formData,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setPhotoError((data as { error?: string }).error ?? "Failed to upload photo")
+        setPhotoSubmitting(false)
+        return
+      }
+      setEmployee(data)
+      setPhotoSuccess("Photo updated.")
+      setPhotoSubmitting(false)
+      setTimeout(() => {
+        setShowPhotoForm(false)
+        setPhotoSuccess("")
+      }, 2000)
+    } catch {
+      setPhotoError("Something went wrong. Please try again.")
+      setPhotoSubmitting(false)
+    }
+  }
+
   const formatMoney = (amountMinor: number | null) =>
     amountMinor === null
       ? "-"
@@ -248,17 +313,25 @@ export function EmployeeShell({ children }: EmployeeShellProps) {
         {employee && (
           <section className="mb-6 rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
             <div className="flex items-center gap-4">
-              {employee.photo ? (
-                <img
-                  src={employee.photo}
-                  alt={employee.name}
-                  className="size-12 rounded-full object-cover ring-2 ring-zinc-700"
-                />
-              ) : (
-                <div className="flex size-12 items-center justify-center rounded-full bg-zinc-800 ring-2 ring-zinc-700">
-                  <User className="size-6 text-zinc-500" />
+              <div
+                className="group relative cursor-pointer"
+                onClick={handleOpenPhoto}
+              >
+                {employee.photo ? (
+                  <img
+                    src={employee.photo}
+                    alt={employee.name}
+                    className="size-12 rounded-full object-cover ring-2 ring-zinc-700 group-hover:opacity-50 transition-opacity"
+                  />
+                ) : (
+                  <div className="flex size-12 items-center justify-center rounded-full bg-zinc-800 ring-2 ring-zinc-700 group-hover:opacity-50 transition-opacity">
+                    <User className="size-6 text-zinc-500" />
+                  </div>
+                )}
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Pencil className="size-4 text-white" />
                 </div>
-              )}
+              </div>
               <div className="flex-1">
                 <h2 className="text-xl font-bold text-white">{employee.name}</h2>
                 <p className="text-base font-medium text-zinc-300">
@@ -467,6 +540,78 @@ export function EmployeeShell({ children }: EmployeeShellProps) {
                   type="button"
                   variant="outline"
                   onClick={() => setShowConnectForm(false)}
+                  className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showPhotoForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-white">Edit Photo</h3>
+              <Button variant="ghost" size="sm" onClick={() => setShowPhotoForm(false)}>
+                <span className="text-zinc-400 hover:text-white">✕</span>
+              </Button>
+            </div>
+
+            <form onSubmit={handlePhotoSubmit} className="space-y-4">
+              <div className="flex flex-col items-center gap-3">
+                {photoPreview ? (
+                  <img
+                    src={photoPreview}
+                    alt="Profile preview"
+                    className="size-24 rounded-full object-cover ring-2 ring-zinc-700"
+                  />
+                ) : (
+                  <div className="flex size-24 items-center justify-center rounded-full bg-zinc-800 ring-2 ring-zinc-700">
+                    <User className="size-10 text-zinc-500" />
+                  </div>
+                )}
+                <Label
+                  htmlFor="profile-photo"
+                  className="cursor-pointer text-sm text-[#e78a53] hover:underline"
+                >
+                  {photoPreview && photoPreview !== employee?.photo ? "Change photo" : "Upload photo"}
+                </Label>
+                <Input
+                  id="profile-photo"
+                  type="file"
+                  accept="image/png,image/jpeg,image/gif,image/webp"
+                  onChange={handlePhotoChange}
+                  className="hidden"
+                />
+                <p className="text-xs text-zinc-500">PNG, JPG, GIF, or WEBP (max 5 MB)</p>
+              </div>
+
+              {photoError && (
+                <p className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+                  {photoError}
+                </p>
+              )}
+              {photoSuccess && (
+                <p className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
+                  {photoSuccess}
+                </p>
+              )}
+
+              <div className="flex gap-2">
+                <Button
+                  type="submit"
+                  disabled={photoSubmitting || !photoFile}
+                  className="flex-1 bg-[#e78a53] text-white hover:bg-[#e78a53]/90"
+                >
+                  {photoSubmitting ? "Uploading..." : "Upload photo"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowPhotoForm(false)}
                   className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
                 >
                   Cancel
