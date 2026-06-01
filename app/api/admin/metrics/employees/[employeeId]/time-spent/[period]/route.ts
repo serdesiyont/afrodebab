@@ -13,7 +13,7 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const period = params.period
+  const period = await params.period
   if (!ALLOWED_PERIODS.has(period)) {
     return NextResponse.json({ error: "Invalid period" }, { status: 400 })
   }

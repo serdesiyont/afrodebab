@@ -19,6 +19,19 @@ export interface JobApplicationApi {
   updatedAt: string
 }
 
+export type AiOverviewStatus = "PENDING" | "COMPLETED" | "FAILED"
+
+export interface JobApplicationAiOverviewApi {
+  applicationId: number
+  fullName: string
+  jobTitle: string
+  aiOverviewText: string | null
+  aiOverviewStatus: AiOverviewStatus
+  aiOverviewError: string | null
+  aiOverviewAttemptCount: number
+  aiOverviewCompletedAt: string | null
+}
+
 export type EmailNotificationStatus = "PENDING" | "SENT" | "FAILED"
 
 export type EmailNotificationType =

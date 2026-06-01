@@ -5,17 +5,28 @@ import { Clock, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { QRScanner } from "@/components/employee/qr-scanner"
 
-const QR_VALID_URL = "https://attendance.gogerami.com"
+type ClockAction = "clockIn" | "clockOut" | "lunchBreakIn" | "lunchBreakOut"
 
-export function EmployeeAttendance() {
+export function AttendanceClock() {
   const [showScanner, setShowScanner] = useState(false)
-  const [clockAction, setClockAction] = useState<
-    "clockIn" | "clockOut" | "lunchBreakIn" | "lunchBreakOut" | null
-  >(null)
+  const [clockAction, setClockAction] = useState<ClockAction | null>(null)
   const [clockLoading, setClockLoading] = useState(false)
   const [clockMessage, setClockMessage] = useState("")
 
-  const handleClockAction = (action: "clockIn" | "clockOut" | "lunchBreakIn" | "lunchBreakOut") => {
+  const getCurrentPosition = () =>
+    new Promise<GeolocationPosition>((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error("Geolocation is not supported"))
+        return
+      }
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      })
+    })
+
+  const handleClockAction = (action: ClockAction) => {
     setClockAction(action)
     setShowScanner(true)
     setClockMessage("")
@@ -26,9 +37,28 @@ export function EmployeeAttendance() {
     setClockLoading(true)
     setClockMessage("")
 
-    if (qrData !== QR_VALID_URL) {
-      setClockMessage("Invalid QR code. Please scan the correct attendance QR code.")
+    const email = qrData.trim()
+    if (!email) {
+      setClockMessage("Invalid QR code. Please scan an employee QR code.")
       setClockLoading(false)
+      setClockAction(null)
+      return
+    }
+
+    if (!clockAction) {
+      setClockMessage("Select an attendance action first.")
+      setClockLoading(false)
+      setClockAction(null)
+      return
+    }
+
+    let position: GeolocationPosition
+    try {
+      position = await getCurrentPosition()
+    } catch {
+      setClockMessage("Location access is required to record attendance.")
+      setClockLoading(false)
+      setClockAction(null)
       return
     }
 
@@ -38,7 +68,9 @@ export function EmployeeAttendance() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: clockAction,
-          qrData,
+          email,
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
         }),
       })
 
@@ -123,7 +155,7 @@ export function EmployeeAttendance() {
               </Button>
             </div>
             <p className="mt-3 text-sm text-zinc-500">
-              Click any action and scan the workplace QR code.
+              Click any action and scan the employee QR code.
             </p>
           </>
         )}

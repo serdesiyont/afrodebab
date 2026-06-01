@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   BarChart3,
-  Clock,
   CreditCard,
   Key,
   Link2,
@@ -14,9 +13,11 @@ import {
   LogOut,
   MessageSquare,
   Pencil,
+  QrCode,
   Star,
   User,
 } from "lucide-react"
+import QRCode from "react-qr-code"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -50,6 +51,7 @@ export function EmployeeShell({ children }: EmployeeShellProps) {
   const [success, setSuccess] = useState("")
   const [showPasswordForm, setShowPasswordForm] = useState(false)
   const [showConnectForm, setShowConnectForm] = useState(false)
+  const [showQrModal, setShowQrModal] = useState(false)
   const [connectedAccounts, setConnectedAccounts] = useState<{
     githubUsername?: string | null
     trelloUsername?: string | null
@@ -69,9 +71,8 @@ export function EmployeeShell({ children }: EmployeeShellProps) {
 
   const tabs = useMemo(
     () => [
-      { href: "/employee/attendance", label: "Attendance", icon: Clock },
-      { href: "/employee/payments", label: "Payments", icon: CreditCard },
       { href: "/employee/reports", label: "Report", icon: BarChart3 },
+      { href: "/employee/payments", label: "Payments", icon: CreditCard },
       { href: "/employee/peer-reviews", label: "Peer Review", icon: MessageSquare },
       { href: "/employee/my-review", label: "My Review", icon: Star },
     ],
@@ -279,10 +280,19 @@ export function EmployeeShell({ children }: EmployeeShellProps) {
           <div>
             <h1 className="text-2xl font-bold text-white">Employee Portal</h1>
             <p className="mt-1 text-zinc-400">
-              Manage your account, attendance, and payments.
+              Manage your account, reports, and payments.
             </p>
           </div>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+              onClick={() => setShowQrModal(true)}
+            >
+              <QrCode className="mr-2 size-4" />
+            
+            </Button>
             <Button
               variant="outline"
               className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
@@ -353,6 +363,7 @@ export function EmployeeShell({ children }: EmployeeShellProps) {
               <div className="text-right">
                 <p className="text-sm text-zinc-400">{employee.email}</p>
                 {employee.phone && <p className="text-sm text-zinc-400">{employee.phone}</p>}
+                
               </div>
             </div>
           </section>
@@ -429,6 +440,7 @@ export function EmployeeShell({ children }: EmployeeShellProps) {
                   {error}
                 </p>
               )}
+
               {success && (
                 <p className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
                   {success}
@@ -454,6 +466,26 @@ export function EmployeeShell({ children }: EmployeeShellProps) {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {showQrModal && employee && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-white">Attendance QR</h3>
+              <Button variant="ghost" size="sm" onClick={() => setShowQrModal(false)}>
+                <span className="text-zinc-400 hover:text-white">✕</span>
+              </Button>
+            </div>
+            <div className="flex flex-col items-center gap-4">
+              <div className="rounded-lg bg-white p-4">
+                <QRCode value={employee.email} size={240} />
+              </div>
+          
+            </div>
+          </div>
+          
         </div>
       )}
 

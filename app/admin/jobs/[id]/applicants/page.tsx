@@ -3,10 +3,15 @@
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useParams } from "next/navigation"
-import { Loader2 } from "lucide-react"
+import * as Dialog from "@radix-ui/react-dialog"
+import { Loader2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import type { ApplicationStatus, JobApplicationApi } from "@/lib/job-applications-api"
+import type {
+  ApplicationStatus,
+  JobApplicationAiOverviewApi,
+  JobApplicationApi,
+} from "@/lib/job-applications-api"
 
 const INTERVIEW_ELIGIBLE_STATUSES = new Set(["APPLIED", "UNDER_REVIEW"])
 const STATUS_FILTERS: Array<"ALL" | ApplicationStatus> = [
@@ -17,6 +22,51 @@ const STATUS_FILTERS: Array<"ALL" | ApplicationStatus> = [
   "REJECTED",
   "HIRED",
 ]
+
+type AiOverviewState =
+  | { state: "loading" }
+  | { state: "error"; message: string }
+  | { state: "loaded"; data: JobApplicationAiOverviewApi }
+
+type ParsedAiOverview = {
+  matchScore: number | null
+  strengths: string[]
+  weaknesses: string[]
+  overallAssessment: string | null
+}
+
+const parseAiOverview = (text: string | null): ParsedAiOverview | null => {
+  if (!text) return null
+  try {
+    const raw = JSON.parse(text) as Record<string, unknown>
+    const matchScore = typeof raw.matchScore === "number" ? raw.matchScore : null
+    const strengths = Array.isArray(raw.strengths)
+      ? raw.strengths.filter((item): item is string => typeof item === "string")
+      : []
+    const weaknesses = Array.isArray(raw.weaknesses)
+      ? raw.weaknesses.filter((item): item is string => typeof item === "string")
+      : []
+    const overallAssessment =
+      typeof raw.overallAssessment === "string" ? raw.overallAssessment : null
+    return { matchScore, strengths, weaknesses, overallAssessment }
+  } catch {
+    return null
+  }
+}
+
+const normalizeScore = (value: number | null) => {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null
+  return Math.max(0, Math.min(100, Math.round(value)))
+}
+
+const scoreTone = (value: number | null) => {
+  if (typeof value !== "number") {
+    return { text: "text-zinc-400", ring: "#3f3f46" }
+  }
+  if (value >= 90) return { text: "text-emerald-400", ring: "#34d399" }
+  if (value >= 70) return { text: "text-amber-400", ring: "#fbbf24" }
+  return { text: "text-rose-400", ring: "#fb7185" }
+}
 
 export default function AdminJobApplicantsPage() {
   const params = useParams<{ id: string }>()
@@ -34,6 +84,11 @@ export default function AdminJobApplicantsPage() {
   const [hireSalaryDate, setHireSalaryDate] = useState("")
   const [hireSalaryAmount, setHireSalaryAmount] = useState("")
   const [hiring, setHiring] = useState(false)
+  const [aiOverviewState, setAiOverviewState] = useState<Record<number, AiOverviewState>>({})
+  const [aiModalOpen, setAiModalOpen] = useState(false)
+  const [activeAiOverview, setActiveAiOverview] = useState<JobApplicationAiOverviewApi | null>(
+    null
+  )
 
   const fetchApplications = useCallback(async () => {
     if (!jobId) return
@@ -63,14 +118,61 @@ export default function AdminJobApplicantsPage() {
     }
   }, [jobId])
 
+  const fetchAiOverview = useCallback(async (applicationId: number) => {
+    setAiOverviewState((prev) => ({
+      ...prev,
+      [applicationId]: { state: "loading" },
+    }))
+    try {
+      const res = await fetch(`/api/admin/job-applications/${applicationId}/ai-overview`, {
+        cache: "no-store",
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error((data as { error?: string }).error ?? "Failed to load AI overview")
+      }
+      setAiOverviewState((prev) => ({
+        ...prev,
+        [applicationId]: { state: "loaded", data: data as JobApplicationAiOverviewApi },
+      }))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load AI overview"
+      setAiOverviewState((prev) => ({
+        ...prev,
+        [applicationId]: { state: "error", message },
+      }))
+    }
+  }, [])
+
   useEffect(() => {
     fetchApplications()
   }, [fetchApplications])
+
+  useEffect(() => {
+    if (applications.length === 0) return
+    for (const application of applications) {
+      if (!aiOverviewState[application.id]) {
+        void fetchAiOverview(application.id)
+      }
+    }
+  }, [applications, aiOverviewState, fetchAiOverview])
 
   const filteredApplications = useMemo(() => {
     if (statusFilter === "ALL") return applications
     return applications.filter((application) => application.status === statusFilter)
   }, [applications, statusFilter])
+
+  const activeAiDetails = useMemo(
+    () => parseAiOverview(activeAiOverview?.aiOverviewText ?? null),
+    [activeAiOverview]
+  )
+  const normalizedAiScore = normalizeScore(activeAiDetails?.matchScore ?? null)
+  const aiScoreTone = scoreTone(normalizedAiScore)
+  const aiScoreLabel = normalizedAiScore == null ? "—" : `${normalizedAiScore}%`
+  const aiScoreStyle =
+    normalizedAiScore == null
+      ? { background: "#27272a" }
+      : { background: `conic-gradient(${aiScoreTone.ring} ${normalizedAiScore}%, #27272a 0)` }
 
   const selectedEligibleIds = useMemo(
     () =>
@@ -86,6 +188,51 @@ export default function AdminJobApplicantsPage() {
       if (checked) return [...prev, id]
       return prev.filter((value) => value !== id)
     })
+  }
+
+  const openAiOverview = (overview: JobApplicationAiOverviewApi) => {
+    setActiveAiOverview(overview)
+    setAiModalOpen(true)
+  }
+
+  const handleAiModalChange = (open: boolean) => {
+    if (!open) {
+      setActiveAiOverview(null)
+    }
+    setAiModalOpen(open)
+  }
+
+  const renderAiOverviewCell = (applicationId: number) => {
+    const overviewState = aiOverviewState[applicationId]
+    if (!overviewState || overviewState.state === "loading") {
+      return (
+        <span className="inline-flex items-center gap-2 text-xs text-zinc-500">
+          <Loader2 className="size-3 animate-spin" />
+          Loading
+        </span>
+      )
+    }
+    if (overviewState.state === "error") {
+      return <span className="text-xs font-medium text-rose-400">Failed</span>
+    }
+    const overview = overviewState.data
+    if (overview.aiOverviewStatus === "PENDING") {
+      return <span className="text-xs font-medium text-amber-400">Pending</span>
+    }
+    if (overview.aiOverviewStatus === "FAILED") {
+      return <span className="text-xs font-medium text-rose-400">Failed</span>
+    }
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="text-emerald-400 hover:text-emerald-300"
+        onClick={() => openAiOverview(overview)}
+      >
+        View
+      </Button>
+    )
   }
 
   const handleMarkUnderReview = async (applicationId: number) => {
@@ -306,6 +453,9 @@ export default function AdminJobApplicantsPage() {
                 <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Contact</th>
                 <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Status</th>
                 <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Applied</th>
+                <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                  AI Overview
+                </th>
                 <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Actions</th>
               </tr>
             </thead>
@@ -369,6 +519,7 @@ export default function AdminJobApplicantsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-zinc-400">{formatTimestamp(application.createdAt)}</td>
+                    <td className="px-4 py-3">{renderAiOverviewCell(application.id)}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
                         <Button
@@ -398,6 +549,118 @@ export default function AdminJobApplicantsPage() {
           </table>
         </div>
       )}
+
+      <Dialog.Root open={aiModalOpen} onOpenChange={handleAiModalChange}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+          <Dialog.Content
+            className="fixed left-1/2 top-1/2 z-[10001] w-full max-w-3xl -translate-x-1/2 -translate-y-1/2 max-h-[90vh] overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-xl focus:outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+            aria-describedby={undefined}
+          >
+            <div className="mb-6 flex items-center justify-between">
+              <Dialog.Title className="text-xl font-semibold text-white">AI overview</Dialog.Title>
+              <Dialog.Close asChild>
+                <button
+                  type="button"
+                  className="rounded-full p-2 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+                  aria-label="Close"
+                >
+                  <X className="size-5" />
+                </button>
+              </Dialog.Close>
+            </div>
+
+            {activeAiOverview ? (
+              <div className="space-y-6">
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
+                  <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-zinc-500">Applicant</p>
+                      <p className="text-lg font-semibold text-white">{activeAiOverview.fullName}</p>
+                      <p className="text-sm text-zinc-400">{activeAiOverview.jobTitle}</p>
+                      {activeAiOverview.aiOverviewCompletedAt && (
+                        <p className="mt-2 text-xs text-zinc-500">
+                          Completed {formatTimestamp(activeAiOverview.aiOverviewCompletedAt)}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div
+                        className="flex size-24 items-center justify-center rounded-full"
+                        style={aiScoreStyle}
+                      >
+                        <div className="flex size-[72px] items-center justify-center rounded-full bg-zinc-900">
+                          <span className={`text-lg font-semibold ${aiScoreTone.text}`}>
+                            {aiScoreLabel}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm text-zinc-400">Match score</p>
+                        <p className={`text-2xl font-semibold ${aiScoreTone.text}`}>{aiScoreLabel}</p>
+                        <p className="text-xs text-zinc-500">Higher is better</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {activeAiDetails ? (
+                  <>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
+                        <p className="text-sm font-semibold text-white">Strengths</p>
+                        {activeAiDetails.strengths.length > 0 ? (
+                          <ul className="mt-3 space-y-2 text-sm text-zinc-300">
+                            {activeAiDetails.strengths.map((item, index) => (
+                              <li key={`${item}-${index}`} className="flex gap-2">
+                                <span className="mt-1 size-1.5 rounded-full bg-emerald-400" />
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="mt-3 text-sm text-zinc-500">No strengths provided yet.</p>
+                        )}
+                      </div>
+                      <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
+                        <p className="text-sm font-semibold text-white">Weaknesses</p>
+                        {activeAiDetails.weaknesses.length > 0 ? (
+                          <ul className="mt-3 space-y-2 text-sm text-zinc-300">
+                            {activeAiDetails.weaknesses.map((item, index) => (
+                              <li key={`${item}-${index}`} className="flex gap-2">
+                                <span className="mt-1 size-1.5 rounded-full bg-rose-400" />
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="mt-3 text-sm text-zinc-500">No weaknesses provided yet.</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
+                      <p className="text-sm font-semibold text-white">Overall assessment</p>
+                      <p className="mt-3 text-sm text-zinc-300">
+                        {activeAiDetails.overallAssessment ?? "No assessment summary provided."}
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 text-sm text-zinc-400">
+                    AI overview data is not available yet.
+                  </div>
+                )}
+
+                <p className="text-xs text-zinc-500">
+                  Disclaimer: This is AI generated and might make a mistake.
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-zinc-400">No AI overview selected.</p>
+            )}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   )
 }
