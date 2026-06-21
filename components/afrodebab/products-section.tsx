@@ -4,6 +4,7 @@ import { motion, useInView } from "framer-motion"
 import { useRef } from "react"
 import { ExternalLink, Gift, ShoppingBag, Rocket } from "lucide-react"
 import Image from "next/image"
+import Link from "next/link"
 
 const brands = [
   {
@@ -15,15 +16,18 @@ const brands = [
     gradient: "from-primary to-primary/70",
     features: ["Diaspora Gifting", "Local Commerce", "Secure Payments"],
     image: "/our-products/go-gerami.png",
+    link: "https://gogerami.com",
   },
   {
-    name: "Coming Soon",
-    tagline: "New Venture",
-    description: "We're building something exciting. Stay tuned for our next transformative platform.",
-    status: "coming",
+    name: "Putnam Tire",
+    tagline: "Reservations & Quotes Made Easy",
+    description: "Tire repair shop based in Jackson, Mississippi",
+    status: "live",
     icon: Rocket,
     gradient: "from-muted-foreground/30 to-muted-foreground/10",
-    features: ["Innovation", "Technology", "Impact"],
+    features: ["Tire Shop", "Auto Repair", "Reservations", "Quotes"],
+    image: "/our-products/putnam-tire.png",
+    link: "https://putnamtire.com",
   },
   {
     name: "Coming Soon",
@@ -115,9 +119,10 @@ export function PortfolioSection() {
                       <h3 className="text-xl font-semibold text-foreground mb-1">{brand.name}</h3>
                       <p className="text-sm text-secondary font-medium">{brand.tagline}</p>
                     </div>
-                    {brand.status === "live" && (
+                    {brand.status === "live" && brand.link && (
                       <button className="p-2 rounded-full hover:bg-muted transition-colors">
-                        <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                        
+                        <Link href={brand.link} target="_blank"><ExternalLink className="w-4 h-4 text-muted-foreground" /></Link>
                       </button>
                     )}
                   </div>

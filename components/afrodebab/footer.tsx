@@ -118,8 +118,12 @@ export function Footer() {
               <h4 className="font-semibold text-foreground mb-4">Products</h4>
               <ul className="space-y-3">
                 <li>
-                  <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                  <a href="https://gogerami.com" target="_blank" className="text-muted-foreground hover:text-foreground transition-colors">
                     goGerami
+                  </a>
+                  <br/>
+                  <a href="https://putnamtire.com" target="_blank" className="text-muted-foreground hover:text-foreground transition-colors">
+                    Putnam Tire
                   </a>
                 </li>
                 <li>

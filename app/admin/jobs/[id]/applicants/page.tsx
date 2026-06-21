@@ -215,6 +215,7 @@ export default function AdminJobApplicantsPage() {
     if (overviewState.state === "error") {
       return <span className="text-xs font-medium text-rose-400">Failed</span>
     }
+    
     const overview = overviewState.data
     if (overview.aiOverviewStatus === "PENDING") {
       return <span className="text-xs font-medium text-amber-400">Pending</span>
@@ -222,15 +223,24 @@ export default function AdminJobApplicantsPage() {
     if (overview.aiOverviewStatus === "FAILED") {
       return <span className="text-xs font-medium text-rose-400">Failed</span>
     }
+  
+  
+    const details = parseAiOverview(overview.aiOverviewText ?? null)
+    const score = normalizeScore(details?.matchScore ?? null)
+    
+
+    const tone = scoreTone(score)
+    const label = score == null ? "—" : `${score}%`
+  
     return (
       <Button
         type="button"
         variant="ghost"
         size="sm"
-        className="text-emerald-400 hover:text-emerald-300"
+        className={`font-semibold transition-transform active:scale-95 ${tone.text} hover:bg-zinc-800`}
         onClick={() => openAiOverview(overview)}
       >
-        View
+        {label}
       </Button>
     )
   }
