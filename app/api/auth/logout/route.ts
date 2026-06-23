@@ -3,14 +3,16 @@ import { getCookieName } from "@/lib/auth"
 
 export async function POST() {
   const response = NextResponse.json({ ok: true })
-  response.cookies.set({
-    name: getCookieName(),
-    value: "",
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 0,
-    path: "/",
-  })
+  for (const role of ["admin", "employee"] as const) {
+    response.cookies.set({
+      name: getCookieName(role),
+      value: "",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 0,
+      path: "/",
+    })
+  }
   return response
 }

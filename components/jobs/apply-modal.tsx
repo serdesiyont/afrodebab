@@ -70,15 +70,25 @@ export function ApplyModal({
           ? github.trim()
           : `https://github.com/${github.trim()}`
         : ""
-      const res = await fetch(`/api/jobs/${jobId}/apply`, {
+      if (!cvFile) {
+        setSubmitError("Resume is required.")
+        setSubmitting(false)
+        return
+      }
+      const formData = new FormData()
+      formData.set("fullName", fullname.trim())
+      formData.set("email", email.trim())
+      if (phone.trim()) {
+        formData.set("phoneNumber", phone.trim())
+      }
+      if (githubUrl) {
+        formData.set("githubUrl", githubUrl)
+      }
+      formData.set("resume", cvFile)
+
+      const res = await fetch(`/api/jobs/${jobId}/apply/form`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullName: fullname.trim(),
-          email: email.trim(),
-          phoneNumber: phone.trim(),
-          githubUrl,
-        }),
+        body: formData,
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -159,7 +169,6 @@ export function ApplyModal({
                   placeholder="Your full name"
                   value={fullname}
                   onChange={(e) => setFullname(e.target.value)}
-                  required
                   className="w-full"
                 />
               </div>
@@ -202,7 +211,7 @@ export function ApplyModal({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="apply-cv">
-                  CV / Resume <span className="text-muted-foreground">(optional)</span>
+                  CV / Resume <span className="text-muted-foreground">(required)</span>
                 </Label>
                 <input
                   ref={fileInputRef}

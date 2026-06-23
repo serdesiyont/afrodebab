@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 
-const CMS_BASE_URL = "https://afrodebab-cms-api.onrender.com"
+const CMS_BASE_URL = process.env.NEXT_PUBLIC_CMS_BASE_URL!
 
 export async function GET(request: NextRequest) {
   try {

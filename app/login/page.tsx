@@ -9,10 +9,11 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { clearAdminClientToken, setAdminClientToken } from "@/lib/admin-client-auth"
 
 export default function LoginPage() {
   const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get("callbackUrl") || "/admin"
+  const callbackUrl = searchParams.get("callbackUrl")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -34,7 +35,17 @@ export default function LoginPage() {
         setIsLoading(false)
         return
       }
-      window.location.href = callbackUrl
+      const role = data.role === "employee" ? "employee" : "admin"
+      if (role === "admin" && typeof data.token === "string") {
+        setAdminClientToken(data.token)
+      } else {
+        clearAdminClientToken()
+      }
+      const defaultRedirect = role === "employee" ? "/employee" : "/admin"
+      const isRoleMatchingCallback =
+        typeof callbackUrl === "string" &&
+        (role === "admin" ? callbackUrl.startsWith("/admin") : callbackUrl.startsWith("/employee"))
+      window.location.href = isRoleMatchingCallback ? callbackUrl : defaultRedirect
       return
     } catch {
       setError("Something went wrong. Please try again.")
@@ -72,7 +83,7 @@ export default function LoginPage() {
           <Link href="/" className="inline-block mb-6">
             <div className="flex flex-col items-center gap-2">
               
-              <span className="text-md font-medium text-[#e78a53]">AfroDebab Admin</span>
+              <span className="text-md font-medium text-[#e78a53]">AfroDebab Portal</span>
             </div>
           </Link>
           <h1 className="text-3xl font-bold text-white mb-2">Welcome back</h1>

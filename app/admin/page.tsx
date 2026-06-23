@@ -1,7 +1,9 @@
 import Link from "next/link"
+import { headers } from "next/headers"
 import { BLOG_POSTS } from "@/lib/blog-data"
 import { fetchJobs } from "@/lib/jobs-api"
 import { fetchEvents } from "@/lib/events-api"
+import { getAdminToken } from "@/lib/auth"
 
 export default async function AdminDashboardPage() {
   let jobsCount = 0
@@ -22,11 +24,47 @@ export default async function AdminDashboardPage() {
   } catch {
     // ignore
   }
+  let employeesCount = 0
+  let activeEmployeesCount = 0
+  let duePaymentsCount = 0
+  try {
+    const cookieHeader = (await headers()).get("cookie")
+    const token = getAdminToken(cookieHeader)
+    if (token) {
+      const [employeesRes, duePaymentsRes] = await Promise.all([
+        fetch(
+          `${process.env.NEXT_PUBLIC_CMS_BASE_URL}/admin/employees?page=0&size=100&sortBy=createdAt&direction=desc`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: "no-store",
+          }
+        ),
+        fetch(`${process.env.NEXT_PUBLIC_CMS_BASE_URL}/admin/payments/due`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        }),
+      ])
+      if (employeesRes.ok) {
+        const employeesData = (await employeesRes.json()) as {
+          totalElements: number
+          content: Array<{ active: boolean }>
+        }
+        employeesCount = employeesData.totalElements
+        activeEmployeesCount = employeesData.content.filter((employee) => employee.active).length
+      }
+      if (duePaymentsRes.ok) {
+        const dueData = (await duePaymentsRes.json()) as unknown[]
+        duePaymentsCount = Array.isArray(dueData) ? dueData.length : 0
+      }
+    }
+  } catch {
+    // ignore
+  }
 
   return (
     <div>
       <h1 className="text-2xl font-bold text-white mb-2">Dashboard</h1>
-      <p className="text-zinc-400 mb-8">Manage blog, jobs, and events.</p>
+      <p className="text-zinc-400 mb-8">Manage blog, jobs, events, and employees.</p>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <Link
@@ -56,6 +94,22 @@ export default async function AdminDashboardPage() {
           <p className="text-sm text-zinc-500 mt-1">
             {publishedEventsCount} published
           </p>
+        </Link>
+        <Link
+          href="/admin/employees"
+          className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 transition-colors hover:border-[#e78a53]/40 hover:bg-zinc-900"
+        >
+          <h2 className="text-lg font-semibold text-white mb-1">Employees</h2>
+          <p className="text-3xl font-bold text-[#e78a53]">{employeesCount}</p>
+          <p className="text-sm text-zinc-500 mt-1">{activeEmployeesCount} active</p>
+        </Link>
+        <Link
+          href="/admin/payments"
+          className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 transition-colors hover:border-[#e78a53]/40 hover:bg-zinc-900"
+        >
+          <h2 className="text-lg font-semibold text-white mb-1">Payroll</h2>
+          <p className="text-3xl font-bold text-[#e78a53]">{duePaymentsCount}</p>
+          <p className="text-sm text-zinc-500 mt-1">due payments</p>
         </Link>
       </div>
 

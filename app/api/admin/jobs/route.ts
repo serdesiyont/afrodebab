@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getAdminToken } from "@/lib/auth"
 
-const CMS_BASE_URL = "https://afrodebab-cms-api.onrender.com"
+const CMS_BASE_URL = process.env.NEXT_PUBLIC_CMS_BASE_URL!
 
 const VALID_EMPLOYMENT_TYPES = ["FULL_TIME", "PART_TIME", "CONTRACT", "INTERN"] as const
 const VALID_STATUSES = ["DRAFT", "OPEN", "CLOSED"] as const

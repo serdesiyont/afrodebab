@@ -112,8 +112,8 @@ const techStack = [
   },
 ]
 
-// Shuffle the tech stack array randomly
-const shuffledTechStack = [...techStack].sort(() => Math.random() - 0.5)
+// Keep ordering deterministic across SSR and hydration.
+const shuffledTechStack = [...techStack].sort((a, b) => a.name.localeCompare(b.name))
 
 // Split into 4 columns
 const itemsPerColumn = Math.ceil(shuffledTechStack.length / 4)

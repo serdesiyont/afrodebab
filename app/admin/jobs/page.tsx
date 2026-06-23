@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import Link from "next/link"
-import { Loader2, Plus, Pencil } from "lucide-react"
+import { Loader2, Plus, Pencil, MailX } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { fetchJobs, formatJobEmploymentType, type JobApi } from "@/lib/jobs-api"
+import { formatJobEmploymentType, type JobApi } from "@/lib/jobs-api"
+import type { JobApplicationApi } from "@/lib/job-applications-api"
 import { CreateJobModal } from "@/components/admin/create-job-modal"
 import { EditJobModal } from "@/components/admin/edit-job-modal"
 
@@ -15,6 +16,8 @@ export default function AdminJobsPage() {
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [editJob, setEditJob] = useState<JobApi | null>(null)
   const [editModalOpen, setEditModalOpen] = useState(false)
+  const [applications, setApplications] = useState<JobApplicationApi[]>([])
+  const [rejectingJobId, setRejectingJobId] = useState<number | null>(null)
 
   const fetchJobsList = useCallback(async () => {
     setLoading(true)
@@ -35,9 +38,51 @@ export default function AdminJobsPage() {
     }
   }, [])
 
+  const fetchApplications = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/job-applications", { cache: "no-store" })
+      if (res.ok) {
+        const data = await res.json()
+        setApplications(Array.isArray(data) ? data : [])
+      }
+    } catch {
+      // non-fatal
+    }
+  }, [])
+
   useEffect(() => {
     fetchJobsList()
-  }, [fetchJobsList])
+    fetchApplications()
+  }, [fetchJobsList, fetchApplications])
+
+  const jobsWithHires = useMemo(() => {
+    const hiredJobIds = new Set<number>()
+    for (const app of applications) {
+      if (app.status === "HIRED") {
+        hiredJobIds.add(app.jobId)
+      }
+    }
+    return hiredJobIds
+  }, [applications])
+
+  const handleSendRejections = async (jobId: number) => {
+    setRejectingJobId(jobId)
+    setError(null)
+    try {
+      const res = await fetch(`/api/admin/job-applications/${jobId}/send-rejections`, {
+        method: "POST",
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error((data as { error?: string }).error ?? "Failed to send rejections")
+      }
+      await fetchApplications()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send rejections")
+    } finally {
+      setRejectingJobId(null)
+    }
+  }
 
   const openEditModal = (job: JobApi) => {
     setEditJob(job)
@@ -74,9 +119,7 @@ export default function AdminJobsPage() {
         </div>
       </div>
 
-      {error && (
-        <p className="mb-4 text-sm text-red-400">{error}</p>
-      )}
+      {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
 
       {loading ? (
         <div className="flex justify-center py-16">
@@ -88,33 +131,91 @@ export default function AdminJobsPage() {
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-zinc-800 bg-zinc-900">
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Title</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Department</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Type</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Status</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500 w-24">Actions</th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                    Title
+                  </th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                    Department
+                  </th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                    Type
+                  </th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                    View
+                  </th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                    Rejections
+                  </th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500 w-24">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {jobs.map((job) => (
-                  <tr key={job.id} className="border-b border-zinc-800/80 hover:bg-zinc-800/30 transition-colors">
+                  <tr
+                    key={job.id}
+                    className="border-b border-zinc-800/80 hover:bg-zinc-800/30 transition-colors"
+                  >
                     <td className="px-4 py-3">
-                      <span className="font-medium text-white">{job.title}</span>
+                      <span className="font-medium text-white">
+                        {job.title}
+                      </span>
                     </td>
-                    <td className="px-4 py-3 text-zinc-400">{job.department}</td>
-                    <td className="px-4 py-3 text-zinc-400">{formatJobEmploymentType(job.employmentType)}</td>
+                    <td className="px-4 py-3 text-zinc-400">
+                      {job.department}
+                    </td>
+                    <td className="px-4 py-3 text-zinc-400">
+                      {formatJobEmploymentType(job.employmentType)}
+                    </td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
                           job.status === "OPEN"
                             ? "bg-emerald-500/20 text-emerald-400"
                             : job.status === "CLOSED"
-                              ? "bg-zinc-600/30 text-zinc-400"
-                              : "bg-amber-500/20 text-amber-400"
+                            ? "bg-zinc-600/30 text-zinc-400"
+                            : "bg-amber-500/20 text-amber-400"
                         }`}
                       >
                         {job.status}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-zinc-400">
+                      <Link
+                        href={`/admin/jobs/${job.id}/applicants`}
+                        className="text-sm text-zinc-300 hover:text-white hover:underline"
+                      >
+                        Applicants
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3">
+                      {jobsWithHires.has(job.id) ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={rejectingJobId === job.id}
+                          onClick={() => handleSendRejections(job.id)}
+                        >
+                          {rejectingJobId === job.id ? (
+                            <>
+                              <Loader2 className="mr-1 size-3 animate-spin" />
+                              Sending
+                            </>
+                          ) : (
+                            <>
+                              <MailX className="mr-1 size-3" />
+                              Send Rejections
+                            </>
+                          )}
+                        </Button>
+                      ) : (
+                        <span className="text-sm text-zinc-600">--</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -158,11 +259,11 @@ export default function AdminJobsPage() {
         open={editModalOpen}
         onOpenChange={(open) => !open && closeEditModal()}
         onSuccess={() => {
-          closeEditModal()
-          fetchJobsList()
+          closeEditModal();
+          fetchJobsList();
         }}
         job={editJob}
       />
     </div>
-  )
+  );
 }

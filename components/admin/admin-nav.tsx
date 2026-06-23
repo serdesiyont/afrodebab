@@ -3,12 +3,18 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { clearAdminClientToken } from "@/lib/admin-client-auth"
 
 const navItems = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/blog", label: "Blog" },
   { href: "/admin/jobs", label: "Jobs" },
   { href: "/admin/events", label: "Events" },
+  { href: "/admin/employees", label: "Employees" },
+  { href: "/admin/metrics", label: "Reports" },
+  { href: "/admin/peer-reviews", label: "Peer Reviews" },
+  { href: "/admin/payments", label: "Payroll" },
+  { href: "/admin/email-notifications", label: "Email Notifications" },
 ]
 
 export function AdminNav() {
@@ -16,6 +22,7 @@ export function AdminNav() {
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" })
+    clearAdminClientToken()
     window.location.href = "/login"
   }
 
